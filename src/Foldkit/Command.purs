@@ -33,7 +33,8 @@ newtype CommandName = CommandName String
 
 derive newtype instance eqCommandName :: Eq CommandName
 derive newtype instance ordCommandName :: Ord CommandName
-derive newtype instance showCommandName :: Show CommandName
+instance showCommandName :: Show CommandName where
+  show (CommandName value) = value
 
 newtype Command message = Command { name :: CommandName, arguments :: String, run :: Aff message }
 

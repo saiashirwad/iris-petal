@@ -97,15 +97,14 @@ A `Definition` is a named constructor whose result is typed separately from the
 message it produces:
 
 ```purescript
-type Definition args result message =
+data Definition args result message = Definition
   { name :: CommandName
+  , run :: args -> Aff result
   , lift :: result -> message
-  , build :: args -> Command message
   }
 
 define
-  :: Show args
-  => CommandName
+  :: CommandName
   -> (args -> Aff result)
   -> (result -> message)
   -> Definition args result message
@@ -223,12 +222,18 @@ data Html message
 data Attribute message
   = Attribute String String
   | BooleanAttribute String Boolean
-  | Property String String
-  | Event String (Event -> message)
+  | OnClick message
+  | OnInput (String -> message)
+  | OnChange (String -> message)
+  | OnCheck (Boolean -> message)
+  | OnSubmit message
+  | OnKeyDown (KeyEvent -> message)
+  | OnFocus message
+  | OnBlur message
 ```
 
-`Html` is a `Functor`. An event stores the message it produces, so there is no
-dispatch stack and no runtime singleton. This is the single biggest reason the
+`Html` is a `Functor`. An event attribute carries its message or a function from
+a typed payload, so there is no dispatch stack and no runtime singleton. This is the single biggest reason the
 Scene tests are pure: rendering is `view model`, and clicking is calling the
 handler stored on the target.
 
@@ -370,13 +375,16 @@ This is the point of the project, so it gets its own document:
   maps it to a message.
 - A new external message is rejected while a command is pending.
 - The runner rejects unresolved commands at the end.
-- Definition matching is name-only; instance matching is name plus args;
-  ambiguity is an error; exact assertions are order-independent multisets.
+- `Matcher` has two forms: `byDefinition` matches by name only, `byInstance`
+  matches by name and exact arguments. Ambiguity is an error; exact assertions
+  are order-independent multisets. `resolveExact` removes one instance at a time.
+- `Scene.send` injects an external message (a subscription, mount, or host
+  event) and obeys the same pending-command guard as an interaction.
 - Scene interactions call the handler stored on the target element. Clicking a
   submit button falls through to the form's submit handler when no click handler
   exists. There is no DOM and no happy-dom.
-- An event handler is total (`Event -> message`), so "the handler ran but
-  produced no message" is unrepresentable. FoldKit's `expectIgnored` and
+- An event handler is total (`message` or `payload -> message`), so "the handler
+  ran but produced no message" is unrepresentable. FoldKit's `expectIgnored` and
   `expectHandled` have no counterpart because the state cannot occur.
 
 ## 11. TypeScript workarounds deleted
@@ -392,7 +400,7 @@ This is the point of the project, so it gets its own document:
 | `Object.assign` callable locators with `.description` | `Locator` ADT |
 | runtime dispatch stack and `__setRuntime` | events carry messages |
 | `happy-dom` fake target chain for pointer events | plain `Event` record |
-| `expectIgnored` / `expectHandled` state machine | total `Event -> message`, impossible |
+| `expectIgnored` / `expectHandled` state machine | total typed handler, impossible |
 | `deepFreeze` and model preservation | immutable data |
 | `Effect` `Context.Service` plumbing | `Aff`, `ReaderT`, explicit records |
 | `Function.dual` data-first/data-last overloads | one argument order |
