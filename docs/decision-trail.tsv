@@ -21,3 +21,4 @@ V04	verify	Command guarantee suite passes 25/25	none	iris test output: 25 passed
 V05	verify	Iris 0.1.13 nested case bug in Story.runStory	none	UnreportedUnknownType then successful build with maybe	observed; workaround committed
 V06	verify	Cross-model judge session was unavailable with Unauthorized on first attempt	Retry succeeded with poteto-reviewer	Reviewer report in session	observed; retry verified
 V07	docs	README, Scene design, module map, idempotent style standard, Iris setup, decision trail	none	docs/*.md; README.md	accepted
+V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 25 passed, 0 failed	verified

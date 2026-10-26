@@ -250,8 +250,7 @@ findSubmitHandler ref = case formHandler (targetHtml ref) of
     _ -> Nothing
 
 isSubmitButton :: forall message. NodeRef message -> Boolean
-isSubmitButton ref =
-  Array.any isSubmitButtonElement (Array.reverse (Array.snoc ref.ancestors ref.element))
+isSubmitButton ref = any isSubmitButtonElement (Array.snoc ref.ancestors ref.element)
 
 isSubmitButtonElement :: forall message. Html.Element message -> Boolean
 isSubmitButtonElement element = case element.tag of

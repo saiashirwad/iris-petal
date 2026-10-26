@@ -276,21 +276,22 @@ expectAttribute locator attribute expected = expectElement locator \ref ->
 expectAccessibleName :: forall model message out. Query.Locator -> String -> Scene model message out
 expectAccessibleName locator expected = do
   root <- currentRoot
-  ref <- resolveRef locator
-  let
-    actual = Query.normalizeWhitespace (Query.accessibleName root (Query.targetHtml ref))
-    wanted = Query.normalizeWhitespace expected
-  if actual == wanted
-  then pure unit
-  else throwError
-    ( "Expected "
-        <> Query.describe locator
-        <> " to have accessible name \""
-        <> wanted
-        <> "\" but received \""
-        <> actual
-        <> "\"."
-    )
+  expectElement locator \ref ->
+    let
+      actual = Query.normalizeWhitespace (Query.accessibleName root (Query.targetHtml ref))
+      wanted = Query.normalizeWhitespace expected
+    in
+      if actual == wanted
+      then Nothing
+      else Just
+        ( "Expected "
+            <> Query.describe locator
+            <> " to have accessible name \""
+            <> wanted
+            <> "\" but received \""
+            <> actual
+            <> "\"."
+        )
 
 expectCount :: forall model message out. Int -> Query.Locator -> Scene model message out
 expectCount expected locator = do

@@ -64,6 +64,14 @@ iris format --check # verify formatting
 small `Aff` harness in `Foldkit.Test`; it prints pass/fail lines and sets a
 non-zero exit code when anything fails.
 
+`scripts/check.sh` runs the whole gate:
+
+```sh
+./scripts/check.sh
+```
+
+It runs `iris format --check`, `iris build`, `iris test`, and `iris run`.
+
 `iris run` prints the server-rendered counter and weather views. `Main.main`
 checks whether `document` exists. In a browser bundle it starts the weather
 runtime in `#root`; in Node it stays on the SSR path.

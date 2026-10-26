@@ -17,6 +17,13 @@ implemented in PureScript. The test suite is the part that matters most.
 Requirements: Iris 0.1.13, Node 22 or newer, Spago 1.0.4.
 
 ```sh
+./scripts/check.sh   # format check, build, test, run
+```
+
+Or run the steps directly:
+
+```sh
+iris format --check
 iris build
 iris test
 iris run
