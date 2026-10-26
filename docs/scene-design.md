@@ -250,6 +250,7 @@ Scene.expectEnabled locator
 Scene.expectChecked locator
 Scene.expectAttribute locator "aria-busy" "true"
 Scene.expectAccessibleName locator "Zip code"
+Scene.expectAccessibleDescription locator "We never share it."
 Scene.expectCount 2 locator
 ```
 

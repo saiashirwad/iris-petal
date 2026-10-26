@@ -16,7 +16,7 @@ test library has a real architecture to test.
 | `Command` | one-shot effects as data | implemented, result-typed | `Foldkit.Command` |
 | Story | model-level simulation | implemented as a monadic interpreter | `Foldkit.Story` |
 | Scene | view-level simulation | implemented as a monadic interpreter | `Foldkit.Scene` |
-| `test/query`, `test/matchers` | accessible locators and assertions | implemented subset | `Foldkit.Query`, `Foldkit.Scene` |
+| `test/query`, `test/matchers` | accessible locators and assertions | implemented subset (name and description) | `Foldkit.Query`, `Foldkit.Scene` |
 | `Html`, attributes, events | view DSL | implemented as a pure functor | `Foldkit.Html` |
 | Snabbdom, VDOM patch | DOM rendering | minimal full-replace runtime | `Foldkit.Runtime` |
 | SSR serializer | HTML string rendering | implemented | `Foldkit.Render` |
