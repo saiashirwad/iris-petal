@@ -64,3 +64,25 @@ export const eventCtrlKey = (event) => Boolean(event.ctrlKey);
 export const eventAltKey = (event) => Boolean(event.altKey);
 
 export const eventMetaKey = (event) => Boolean(event.metaKey);
+
+export const captureFocus = () => {
+  const element = document.activeElement;
+  if (element === null || !("id" in element) || !element.id) {
+    return { id: "", start: 0, end: 0 };
+  }
+  return {
+    id: element.id,
+    start: typeof element.selectionStart === "number" ? element.selectionStart : 0,
+    end: typeof element.selectionEnd === "number" ? element.selectionEnd : 0,
+  };
+};
+
+export const restoreFocus = (state) => () => {
+  if (!state.id) return;
+  const element = document.getElementById(state.id);
+  if (element === null) return;
+  element.focus();
+  if (typeof element.setSelectionRange === "function") {
+    element.setSelectionRange(state.start, state.end);
+  }
+};

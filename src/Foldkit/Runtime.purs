@@ -8,21 +8,20 @@ import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
+import Foldkit.Command (Command)
 import Foldkit.Command as Command
-import Foldkit.Core (Update)
+import Foldkit.Core (Program, Update)
 import Foldkit.Html (Attribute(..), Html(..), KeyEvent)
 
-type Application model message =
-  { initialModel :: model
-  , update :: model -> message -> Update model message Void
-  , view :: model -> Html message
-  , containerId :: String
-  }
+type Application model message input =
+  { program :: Program model message input Void, input :: input, containerId :: String }
 
 foreign import data Element :: Type
 foreign import data DomEvent :: Type
 
 foreign import isBrowser :: Effect Boolean
+foreign import captureFocus :: Effect FocusState
+foreign import restoreFocus :: FocusState -> Effect Unit
 foreign import requireElementById :: String -> Effect Element
 foreign import createElement :: String -> Effect Element
 foreign import createTextNode :: String -> Effect Element
@@ -40,31 +39,47 @@ foreign import eventCtrlKey :: DomEvent -> Boolean
 foreign import eventAltKey :: DomEvent -> Boolean
 foreign import eventMetaKey :: DomEvent -> Boolean
 
-runApplication :: forall model message. Application model message -> Effect Unit
+type FocusState = { id :: String, start :: Int, end :: Int }
+
+runApplication :: forall model message input. Application model message input -> Effect Unit
 runApplication app = do
   container <- requireElementById app.containerId
-  modelRef <- Ref.new app.initialModel
-  render modelRef app container (app.view app.initialModel)
+  let
+    initial = app.program.start app.input
+  modelRef <- Ref.new initial.model
+  render modelRef app container (app.program.view initial.model)
+  runCommands modelRef app container initial.commands
 
 render ::
-  forall model message.
-  Ref.Ref model -> Application model message -> Element -> Html message -> Effect Unit
+  forall model message input.
+  Ref.Ref model -> Application model message input -> Element -> Html message -> Effect Unit
 render modelRef app container html = do
+  focus <- captureFocus
   clearChildren container
   renderInto (dispatch modelRef app container) container html
+  restoreFocus focus
 
 dispatch ::
-  forall model message.
-  Ref.Ref model -> Application model message -> Element -> message -> Effect Unit
+  forall model message input.
+  Ref.Ref model -> Application model message input -> Element -> message -> Effect Unit
 dispatch modelRef app container message = do
   model <- Ref.read modelRef
   let
-    result = app.update model message
+    result = app.program.update model message
   Ref.write result.model modelRef
-  render modelRef app container (app.view result.model)
-  for_ result.commands \commandValue -> launchAff_ do
-    resultMessage <- Command.execute commandValue
-    liftEffect (dispatch modelRef app container resultMessage)
+  render modelRef app container (app.program.view result.model)
+  runCommands modelRef app container result.commands
+
+runCommands ::
+  forall model message input.
+  Ref.Ref model ->
+  Application model message input ->
+  Element ->
+  Array (Command message) ->
+  Effect Unit
+runCommands modelRef app container commands = for_ commands \commandValue -> launchAff_ do
+  resultMessage <- Command.execute commandValue
+  liftEffect (dispatch modelRef app container resultMessage)
 
 renderInto :: forall message. (message -> Effect Unit) -> Element -> Html message -> Effect Unit
 renderInto dispatchMessage parent = case _ of

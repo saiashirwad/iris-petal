@@ -2,6 +2,9 @@ package:
   name: iris-foldkit
   dependencies:
     - aff
+    - aff-promise
+    - argonaut-codecs
+    - argonaut-core
     - arrays
     - console
     - effect

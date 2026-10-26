@@ -99,12 +99,14 @@ message it produces:
 ```purescript
 data Definition args result message = Definition
   { name :: CommandName
+  , renderArgs :: args -> String
   , run :: args -> Aff result
   , lift :: result -> message
   }
 
 define
-  :: CommandName
+  :: Show args
+  => CommandName
   -> (args -> Aff result)
   -> (result -> message)
   -> Definition args result message
