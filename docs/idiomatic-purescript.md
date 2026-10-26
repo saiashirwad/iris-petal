@@ -98,6 +98,9 @@ a `Show` instance that cannot exist.
 - The renderer is a pure fold from `Html` to `String`.
 - HTTP is a `Client` record (`send :: Request -> Aff (Either HttpError Response)`),
   not a typeclass or a service layer; `pureClient` is the test seam.
+- Caches are explicit model data: `Query` stores `Map key (AsyncData value error, generation)`;
+  `Pagination` stores items, next cursor, status, and generation. The state
+  machine is pure and testable; the command only fetches.
 - FFI is a thin edge: DOM operations in `Foldkit.Runtime.js`, exit code in
   `Foldkit.Test.js`.
 

@@ -5,7 +5,7 @@ import Prelude
 import Data.Void (Void)
 import Foldkit.Core (Update, continue)
 import Foldkit.Html (Html, ariaDescribedBy, div, id_, input, p, text, type_)
-import Foldkit.Query as Query
+import Foldkit.Locator as Locator
 import Foldkit.Scene as Scene
 import Foldkit.Test (Test, assertRight, test)
 
@@ -27,6 +27,6 @@ tests =
   [ test "accessible description resolves aria-describedby" do
       assertRight "accessible description"
         ( Scene.runScene update view unit do
-            Scene.expectAccessibleDescription (Query.role "textbox") "We never share it."
+            Scene.expectAccessibleDescription (Locator.role "textbox") "We never share it."
         )
   ]

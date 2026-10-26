@@ -46,6 +46,7 @@ renderAttribute = case _ of
   OnKeyDown _ -> ""
   OnFocus _ -> ""
   OnBlur _ -> ""
+  OnVisible _ -> ""
 
 renderAttributeValue :: String -> String -> String
 renderAttributeValue name value = " " <> name <> "=\"" <> escapeAttribute value <> "\""

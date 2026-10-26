@@ -3,12 +3,12 @@ D01	frame	Use a monadic Story/Scene interpreter instead of a flat step array or 
 D02	frame	Make Command definitions result-typed: Definition args result message with lift at the definition	Keep Definition args message and resolve with a Message; use a result-message conditional type	example command Weather.fetchWeather; test Test.Command; reviewer verdict	accepted
 D03	frame	Commands are inert data: name, structurally comparable JSON payload, Aff runner	Store existential structured args; run effects in tests	Foldkit.Command; Simulation.resolveBy; test Test.Command	accepted
 D04	frame	Expose definition matchers and instance matchers in expectCommands	Only instance equality; only name equality	Foldkit.Command.Matcher; test/Test/Command.purs; test Test.Weather.Story	accepted
-D05	design	Represent events as typed Attribute constructors, not string keys plus payload records	Generic on "event-name" handler table; DOM Event record	Foldkit.Html.Attribute; Foldkit.Query find*Handler; Foldkit.Runtime renderAttribute	accepted
+D05	design	Represent events as typed Attribute constructors, not string keys plus payload records	Generic on "event-name" handler table; DOM Event record	Foldkit.Html.Attribute; Foldkit.Locator find*Handler; Foldkit.Runtime renderAttribute	accepted
 D06	design	Keep Html as a pure functor; an event carries its Message or handler	Runtime dispatch singleton; HtmlBuilder context stack	Foldkit.Html; Foldkit.Scene currentRoot; no happy-dom in tests	accepted
 D07	design	Scene stores only locator scope in ReaderT and uses local for within	Put scope in Scene state; duplicate Simulation.State fields	Foldkit.Scene.within; Foldkit.Simulation.State	accepted
 D08	design	Put pending-command rules in one Simulation module and write actions once with MonadState/MonadError	Duplicate actions in Story and Scene; bespoke MonadTest class	Foldkit.Simulation; Foldkit.Story; Foldkit.Scene	accepted
 D09	design	Pass the initial model to the runner; delete Story.given	Keep given as the first step; use Maybe model in state	Foldkit.Story.runStory; test suites	accepted
-D10	design	Drop the CSS selector locator and its hand-written parser	Keep a partial selector parser; add a parser-combinator dependency	Foldkit.Query exports; test suites use role/label/text only	accepted
+D10	design	Drop the CSS selector locator and its hand-written parser	Keep a partial selector parser; add a parser-combinator dependency	Foldkit.Locator exports; test suites use role/label/text only	accepted
 D11	design	Encode typed command args to Json at definition construction and compare structurally	Canonical Show text; existential args with Eq	Foldkit.Command; docs/foldkit-to-iris.md; test Test.Command	accepted
 D12	design	Do not implement expectIgnored/expectHandled; handlers are total typed actions	Port FoldKit's ignored-interaction state machine	Foldkit.Html.Attribute; Foldkit.Scene.click	accepted
 D13	design	Submodel composition is one record with read/write/update/toParentMessage/onOutMessage	Four ChildFold shapes with type-level policy switches	Foldkit.Submodel; Example.Parent; test Test.Parent	accepted
@@ -17,16 +17,24 @@ D15	design	Browser runtime is a full re-render, not a keyed VDOM differ	Port Sna
 V01	verify	iris build succeeds	none	src/Main.purs imports; output/Main/index.js	verified
 V02	verify	First Story/Scene suite passes 18/18	none	iris test output before command matcher work	verified
 V03	review	Cross-model review returned ADOPT WITH CHANGES	none	Reviewer: result-typed definitions, definition matchers, Scene.send, shared actions	verified
-V04	verify	Full suite passes 33/33	none	iris test output: 33 passed, 0 failed	test/Test/Command.purs; test/Test/Accessibility.purs; test/Test/**	verified
+V04	verify	Full suite passes 37/37	none	iris test output: 37 passed, 0 failed; test/Test/Command.purs; test/Test/Accessibility.purs; test/Test/**	verified
 V05	verify	Iris 0.1.13 nested case bug in Story.runStory	none	UnreportedUnknownType then successful build with maybe	observed; workaround committed
 V06	verify	Cross-model judge session was unavailable with Unauthorized on first attempt	Retry succeeded with poteto-reviewer	Reviewer report in session	observed; retry verified
 V07	docs	README, Scene design, module map, idempotent style standard, Iris setup, decision trail	none	docs/*.md; README.md	accepted
-V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 33 passed, 0 failed	verified
+V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 37 passed, 0 failed	verified
 D16	design	Use a typed Client record over ezfetch for HTTP, not a raw JS fetch FFI	Raw fetch FFI; affjax; fetch; custom XMLHttpRequest	Foldkit.Http; docs/http.md; example Pokedex	accepted
 D17	design	Serve the Pokedex with Vite while iris watch rebuilds output	iris watch only; webpack; esbuild; a custom dev server	package.json; vite.config.js; scripts/dev.sh	accepted
 D18	design	Preserve focused element id/selection across the full re-render	Build a VDOM differ now; use uncontrolled inputs	Foldkit.Runtime captureFocus/restoreFocus; npm run smoke	accepted as slice
-V09	verify	Full suite passes 33/33 after Pokedex and HTTP	none	iris test output: 33 passed, 0 failed	test/Test/Pokedex.purs; test/Test/Http.purs; test/Test/**	verified
-V10	verify	HMR updates a live page after a PureScript edit	Vite full reload only; no watcher	Playwright watched the h1 change from a source edit; iris watch rebuilt output	scripts/dev.sh; HMR smoke run	verified
-V11	verify	Real PokéAPI list fetch and Argonaut decode returns 151 entries	Mock only	iris run --main Example.PokedexSmoke printed OK 151 Pokémon	Temporary smoke module	verified
-V12	verify	Browser smoke: list, focus survives search, filter, detail panel	Pure tests only	npm run smoke printed Pokedex smoke passed	scripts/smoke-pokedex.mjs	verified
+V09	verify	Full suite passes 37/37 after Pokedex, HTTP, Query, and Pagination	none	iris test output: 37 passed, 0 failed; test/Test/Pokedex.purs; test/Test/Http.purs; test/Test/**	verified
+V10	verify	HMR updates a live page after a PureScript edit	Vite full reload only; no watcher	Playwright watched the h1 change from a source edit; iris watch rebuilt output; scripts/dev.sh; HMR smoke run	verified
+V11	verify	Real PokéAPI list fetch and Argonaut decode returns 151 entries	Mock only	iris run --main Example.PokedexSmoke printed OK 151 Pokémon; Temporary smoke module	verified
+V12	verify	Browser smoke: list, focus survives search, filter, detail panel	Pure tests only	npm run smoke printed Pokedex smoke passed; scripts/smoke-pokedex.mjs	verified
 D19	design	Capture EncodeJson in Definition so command construction is typed and matching is structural JSON	Show args; existential args; no argument payload	Foldkit.Command.define; Weather fetchWeather; Pokedex fetchPokemonDetail	accepted
+D20	design	Rename the view query module to Foldkit.Locator and use Foldkit.Query for the cache	Keep Foldkit.Query for both concepts	Foldkit.Locator; Foldkit.Query; tests	accepted
+D21	design	Port FoldKit's experimental Query as a keyed AsyncData cache with per-entry generations	Ad-hoc Map in Pokedex; no cache	Foldkit.Query; Test.Pokedex cached cases; docs/query-cache.md	accepted
+D22	design	Add cursor pagination with append, retry, and generation guards	Load 151 in one request; infinite scroll in Pokedex only	Foldkit.Pagination; Test.Pokedex pagination cases; docs/query-cache.md	accepted
+D23	design	Add Html.onVisible backed by IntersectionObserver as a general viewport sentinel	Scroll listener in app; timer; load-more button only	Foldkit.Html; Foldkit.Runtime observeVisible; Pokedex sentinel; docs/query-cache.md	accepted
+D24	design	Use fixed-size skeletons and min-height panels to prevent click-time layout shift	Text loading state; no skeleton; measure only manually	web/styles.css; Pokedex listSkeleton/detailSkeleton; npm run smoke	verified
+V13	verify	Browser smoke covers list, search focus, filter, detail, pagination, and stable detail height	Pure tests only	npm run smoke printed Pokedex smoke passed; 600px before/loading/after; scripts/smoke-pokedex.mjs	verified
+V14	verify	Scrolling loads all 151 Pokémon through the paginated query	Load 151 in one request	Smoke waits for "All 151 Pokémon loaded."; Pokedex fetchPokemonPage; onVisible	verified
+V15	verify	Cached detail click sends no command and keeps the panel	Refetch every click	Test.Pokedex cached scene; smoke; foldkit.Query	verified

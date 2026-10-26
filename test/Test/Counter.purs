@@ -7,7 +7,7 @@ import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.String as Str
 import Example.Counter as Counter
-import Foldkit.Query as Query
+import Foldkit.Locator as Locator
 import Foldkit.Scene as Scene
 import Foldkit.Story as Story
 import Foldkit.Test (Test, assertRight, assertTrue, test)
@@ -41,21 +41,21 @@ sceneTests =
   [ test "renders the counter and clicks through every control" do
       assertRight "counter scene"
         ( Scene.runScene Counter.update Counter.view Counter.initialModel do
-            Scene.expectExists (Query.namedRole "heading" "Counter")
-            Scene.expectText (Query.text "0") "0"
-            Scene.click (Query.namedRole "button" "+")
-            Scene.expectText (Query.text "1") "1"
-            Scene.click (Query.namedRole "button" "+")
-            Scene.expectText (Query.text "2") "2"
-            Scene.click (Query.namedRole "button" "-")
-            Scene.expectText (Query.text "1") "1"
-            Scene.click (Query.namedRole "button" "Reset")
-            Scene.expectText (Query.text "0") "0"
+            Scene.expectExists (Locator.namedRole "heading" "Counter")
+            Scene.expectText (Locator.text "0") "0"
+            Scene.click (Locator.namedRole "button" "+")
+            Scene.expectText (Locator.text "1") "1"
+            Scene.click (Locator.namedRole "button" "+")
+            Scene.expectText (Locator.text "2") "2"
+            Scene.click (Locator.namedRole "button" "-")
+            Scene.expectText (Locator.text "1") "1"
+            Scene.click (Locator.namedRole "button" "Reset")
+            Scene.expectText (Locator.text "0") "0"
         )
   , test "a missing locator fails with a readable message" do
       case
         Scene.runScene Counter.update Counter.view Counter.initialModel do
-          Scene.click (Query.namedRole "button" "Nope")
+          Scene.click (Locator.namedRole "button" "Nope")
       of
         Left errorMessage ->
           assertTrue "message names the locator" (Str.contains (Str.Pattern "Nope") errorMessage)

@@ -210,8 +210,8 @@ state. Clicking a submit button with no click handler falls through to the
 nearest ancestor form's submit handler, which is why both of these tests work:
 
 ```purescript
-Scene.click (Query.namedRole "button" "Get Weather")
-Scene.submit (Query.role "form")
+Scene.click (Locator.namedRole "button" "Get Weather")
+Scene.submit (Locator.role "form")
 ```
 
 Event propagation is deliberately simpler than the browser: the nearest handler
@@ -261,12 +261,12 @@ Scene.expectCount 2 locator
 the rendered structure:
 
 ```purescript
-Scene.within (Query.role "article") do
-  Scene.expectExists (Query.namedRole "heading" "90210")
+Scene.within (Locator.role "article") do
+  Scene.expectExists (Locator.namedRole "heading" "90210")
   Scene.expectText
-    (Query.text "Beverly Hills, California")
+    (Locator.text "Beverly Hills, California")
     "Beverly Hills, California"
-  Scene.expectText (Query.text "72°F") "72°F"
+  Scene.expectText (Locator.text "72°F") "72°F"
 ```
 
 Accessible names resolve `aria-labelledby`, `aria-label`, `<label for>`, a
@@ -276,8 +276,8 @@ resolution covers explicit `role` plus the common implicit roles. This is a
 subset of AccName 1.2. Regex locators, `.not` matchers, and CSS selectors are not
 implemented. The failure text always names the locator and the actual value.
 
-`Query.find` returns the first match, matching FoldKit's locator semantics.
-`expectCount` uses `Query.findAll`. `Query.text` keeps the deepest matching
+`Locator.find` returns the first match, matching FoldKit's locator semantics.
+`expectCount` uses `Locator.findAll`. `Locator.text` keeps the deepest matching
 element so a text assertion does not silently match a wrapper that also contains
 the text.
 
@@ -293,7 +293,7 @@ means tests can inspect a failure without throwing:
 ```purescript
 case
   Scene.runScene Counter.update Counter.view Counter.initialModel do
-    Scene.click (Query.namedRole "button" "Nope")
+    Scene.click (Locator.namedRole "button" "Nope")
   of
   Left errorMessage -> assertTrue "names the locator" (contains "Nope" errorMessage)
   Right _ -> assertTrue "expected failure" false

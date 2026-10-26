@@ -86,3 +86,20 @@ export const restoreFocus = (state) => () => {
     element.setSelectionRange(state.start, state.end);
   }
 };
+
+export const observeVisible = (element) => (handler) => () => {
+  if (typeof IntersectionObserver === "undefined") {
+    handler();
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        handler();
+      }
+    },
+    { rootMargin: "240px 0px" },
+  );
+  observer.observe(element);
+};

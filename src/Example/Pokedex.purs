@@ -9,7 +9,9 @@ module Example.Pokedex
   , update
   , view
   , program
-  , fetchPokemonList
+  , listConfig
+  , detailConfig
+  , fetchPokemonPage
   , fetchPokemonDetail
   , fetchList
   , fetchPokemon
@@ -32,10 +34,11 @@ import Data.Traversable (traverse)
 import Data.Void (Void)
 import Effect.Aff (Aff)
 import Foldkit.AsyncData (AsyncData(..), getData, isPending)
-import Foldkit.Command (CommandName(..), Definition, command, command0, define, define0)
+import Foldkit.Command (CommandName(..))
 import Foldkit.Core (Program, Update, continue)
 import Foldkit.Html
   ( Html
+  , alt_
   , ariaBusy
   , ariaLabel
   , article
@@ -54,9 +57,11 @@ import Foldkit.Html
   , img
   , input
   , li
+  , loading_
   , main
   , onClick
   , onInput
+  , onVisible
   , p
   , placeholder_
   , role_
@@ -67,9 +72,10 @@ import Foldkit.Html
   , type_
   , ul
   , value_
-  , alt_
   )
 import Foldkit.Http as Http
+import Foldkit.Pagination as Pagination
+import Foldkit.Query as Query
 
 type PokemonSummary = { name :: String, url :: String }
 
@@ -86,25 +92,31 @@ type Pokemon =
   }
 
 data Message
-  = LoadedList (Array PokemonSummary)
-  | FailedList String
-  | UpdatedSearch String
+  = UpdatedSearch String
   | SelectedPokemon String
-  | LoadedPokemon Pokemon
-  | FailedPokemon String
+  | LoadMorePokemon
+  | GotPokemonPage (Pagination.Message PokemonSummary Int Http.HttpError)
+  | GotPokemonQuery (Query.Message String Pokemon Http.HttpError)
 
 type Model =
-  { list :: AsyncData (Array PokemonSummary) String
+  { list :: Pagination.Model PokemonSummary Int Http.HttpError
   , search :: String
   , selected :: Maybe String
-  , detail :: AsyncData Pokemon String
+  , details :: Query.Model String Pokemon Http.HttpError
   }
 
 initialModel :: Model
-initialModel = { list: Loading, search: "", selected: Nothing, detail: Idle }
+initialModel = { list: Pagination.init, search: "", selected: Nothing, details: Query.init }
 
-listUrl :: String
-listUrl = "https://pokeapi.co/api/v2/pokemon?limit=151"
+pageSize :: Int
+pageSize = 24
+
+maxPokemon :: Int
+maxPokemon = 151
+
+listUrl :: Int -> Int -> String
+listUrl limit offset =
+  "https://pokeapi.co/api/v2/pokemon?limit=" <> show limit <> "&offset=" <> show offset
 
 detailUrl :: String -> String
 detailUrl name = "https://pokeapi.co/api/v2/pokemon/" <> name
@@ -166,7 +178,7 @@ fetchJson url = do
 
 fetchList :: Aff (Either Http.HttpError (Array PokemonSummary))
 fetchList = do
-  result <- fetchJson listUrl
+  result <- fetchJson (listUrl maxPokemon 0)
   pure do
     json <- result
     lmap Http.DecodeError (decodeList json)
@@ -178,31 +190,48 @@ fetchPokemon name = do
     json <- result
     lmap Http.DecodeError (decodePokemon json)
 
-fetchPokemonList :: Definition Unit (Either Http.HttpError (Array PokemonSummary)) Message
-fetchPokemonList = define0 (CommandName "FetchPokemonList") fetchList case _ of
-  Left error -> FailedList (Http.describeError error)
-  Right summaries -> LoadedList summaries
+fetchPokemonPage :: Pagination.Definition Int PokemonSummary Http.HttpError
+fetchPokemonPage = Pagination.define (CommandName "FetchPokemonPage") \maybeOffset -> do
+  let
+    offset = fromMaybe 0 maybeOffset
+    remaining = maxPokemon - offset
+    limit = min pageSize remaining
+  if remaining <= 0
+  then pure (Right { items: [], next: Nothing })
+  else do
+    result <- fetchJson (listUrl limit offset)
+    pure do
+      json <- result
+      summaries <- lmap Http.DecodeError (decodeList json)
+      let
+        next = if offset + pageSize >= maxPokemon then Nothing else Just (offset + pageSize)
+      pure { items: summaries, next }
 
-fetchPokemonDetail :: Definition String (Either Http.HttpError Pokemon) Message
-fetchPokemonDetail = define (CommandName "FetchPokemonDetail") fetchPokemon case _ of
-  Left error -> FailedPokemon (Http.describeError error)
-  Right pokemon -> LoadedPokemon pokemon
+fetchPokemonDetail :: Query.Definition String Pokemon Http.HttpError
+fetchPokemonDetail = Query.define (CommandName "FetchPokemonDetail") fetchPokemon
+
+listConfig :: Pagination.Config Model Message PokemonSummary Int Http.HttpError
+listConfig =
+  { read: _.list, write: \model list -> model { list = list }, toParentMessage: GotPokemonPage }
+
+detailConfig :: Query.Config Model Message String Pokemon Http.HttpError
+detailConfig =
+  { read: _.details
+  , write: \model details -> model { details = details }
+  , toParentMessage: GotPokemonQuery
+  }
 
 start :: Unit -> Update Model Message Void
-start _ = { model: initialModel, commands: [ command0 fetchPokemonList ], outMessage: Nothing }
+start _ = Pagination.loadMore listConfig fetchPokemonPage initialModel
 
 update :: Model -> Message -> Update Model Message Void
 update model = case _ of
-  LoadedList summaries -> continue model { list = Success summaries }
-  FailedList error -> continue model { list = Failure error }
   UpdatedSearch value -> continue model { search = value }
   SelectedPokemon name ->
-    { model: model { selected = Just name, detail = Loading }
-    , commands: [ command fetchPokemonDetail name ]
-    , outMessage: Nothing
-    }
-  LoadedPokemon pokemon -> continue model { detail = Success pokemon }
-  FailedPokemon error -> continue model { detail = Failure error }
+    Query.loadIfMissing detailConfig fetchPokemonDetail name model { selected = Just name }
+  LoadMorePokemon -> Pagination.loadMore listConfig fetchPokemonPage model
+  GotPokemonPage pageMessage -> Pagination.receive listConfig pageMessage model
+  GotPokemonQuery queryMessage -> Query.receive detailConfig queryMessage model
 
 program :: Program Model Message Unit Void
 program = { name: "Pokédex", start, update, view }
@@ -222,25 +251,48 @@ view model = div [ class_ "pokedex" ]
           ]
       ]
   , main [ class_ "layout" ]
-      [ section [ class_ "list-panel", ariaBusy (isPending model.list) ]
+      [ section [ class_ "list-panel", ariaBusy (isPending (Pagination.status model.list)) ]
           [ viewList model.list model.search model.selected ]
       , detailPanel model
       ]
   ]
 
-viewList :: AsyncData (Array PokemonSummary) String -> String -> Maybe String -> Html Message
-viewList list search selected = case list of
-  Failure error ->
-    p [ role_ "alert", class_ "error" ] [ text ("Could not load Pokédex: " <> error) ]
-  _ -> case getData list of
-    Nothing -> p [ role_ "status", class_ "status" ] [ text "Loading Pokédex…" ]
-    Just summaries ->
+viewList ::
+  Pagination.Model PokemonSummary Int Http.HttpError -> String -> Maybe String -> Html Message
+viewList list search selected = case Pagination.status list of
+  Failure error -> p [ role_ "alert", class_ "error" ]
+    [ text ("Could not load Pokédex: " <> Http.describeError error) ]
+  _ -> case Array.uncons (Pagination.items list) of
+    Nothing -> listSkeleton
+    Just _ ->
       let
-        visible = filterSummaries search summaries
+        visible = filterSummaries search (Pagination.items list)
       in
-        if Array.null visible
-        then p [ role_ "status", class_ "status" ] [ text "No Pokémon match that search." ]
-        else div [ class_ "grid" ] (map (viewCard selected) visible)
+        div [ class_ "list-stack" ]
+          [ if Array.null visible
+            then p [ role_ "status", class_ "status" ] [ text "No Pokémon match that search." ]
+            else div [ class_ "grid" ] (map (viewCard selected) visible)
+          , viewLoadMore list
+          ]
+
+viewLoadMore :: Pagination.Model PokemonSummary Int Http.HttpError -> Html Message
+viewLoadMore list =
+  if not (Pagination.hasMore list)
+  then p [ class_ "status" ]
+    [ text ("All " <> show (Array.length (Pagination.items list)) <> " Pokémon loaded.") ]
+  else if isPending (Pagination.status list)
+  then div [ class_ "load-more" ] [ span [ class_ "skeleton skeleton-load" ] [] ]
+  else div [ class_ "load-more", onVisible LoadMorePokemon ] [ text "Scroll for more" ]
+
+listSkeleton :: Html Message
+listSkeleton = div [ class_ "grid", role_ "status", ariaLabel "Loading Pokédex" ]
+  ( Array.replicate 24
+      ( div [ class_ "card skeleton-card" ]
+          [ div [ class_ "skeleton skeleton-sprite" ] []
+          , div [ class_ "skeleton skeleton-name" ] []
+          ]
+      )
+  )
 
 filterSummaries :: String -> Array PokemonSummary -> Array PokemonSummary
 filterSummaries search summaries =
@@ -258,22 +310,50 @@ viewCard selected summary = button
   , type_ "button"
   , onClick (SelectedPokemon summary.name)
   ]
-  [ img [ src_ (spriteUrl (pokemonIdFromUrl summary.url)), alt_ summary.name, class_ "sprite" ]
+  [ img
+      [ src_ (spriteUrl (pokemonIdFromUrl summary.url))
+      , alt_ summary.name
+      , loading_ "lazy"
+      , class_ "sprite"
+      ]
   , span [ class_ "card-name" ] [ text (capitalize summary.name) ]
   ]
 
 detailPanel :: Model -> Html Message
-detailPanel model = aside [ class_ "detail-panel" ] case model.selected of
-  Nothing -> [ p [ class_ "hint" ] [ text "Select a Pokémon to see its details." ] ]
-  Just name -> [ viewDetail name model.detail ]
+detailPanel model =
+  aside [ class_ "detail-panel", ariaBusy (isPending selectedDetail) ] case model.selected of
+    Nothing -> [ p [ class_ "hint" ] [ text "Select a Pokémon to see its details." ] ]
+    Just name -> [ viewDetail name selectedDetail ]
+  where
+  selectedDetail = case model.selected of
+    Nothing -> Idle
+    Just name -> Query.read model.details name
 
-viewDetail :: String -> AsyncData Pokemon String -> Html Message
+viewDetail :: String -> AsyncData Pokemon Http.HttpError -> Html Message
 viewDetail name detail = case detail of
   Failure error -> p [ role_ "alert", class_ "error" ]
-    [ text ("Could not load " <> capitalize name <> ": " <> error) ]
+    [ text ("Could not load " <> capitalize name <> ": " <> Http.describeError error) ]
   _ -> case getData detail of
-    Nothing -> p [ role_ "status", class_ "status" ] [ text ("Loading " <> capitalize name <> "…") ]
+    Nothing -> detailSkeleton name
     Just pokemon -> viewPokemon pokemon
+
+detailSkeleton :: String -> Html Message
+detailSkeleton name = article
+  [ class_ "pokemon skeleton-card", role_ "status", ariaLabel ("Loading " <> capitalize name) ]
+  [ header [ class_ "pokemon-header" ]
+      [ div [ class_ "skeleton skeleton-title" ] [], div [ class_ "skeleton skeleton-number" ] [] ]
+  , div [ class_ "skeleton skeleton-image" ] []
+  , div [ class_ "types" ]
+      [ span [ class_ "skeleton skeleton-badge" ] [], span [ class_ "skeleton skeleton-badge" ] [] ]
+  , dl [ class_ "facts" ]
+      [ dt [] [ text "Height" ]
+      , dd [] [ div [ class_ "skeleton skeleton-line" ] [] ]
+      , dt [] [ text "Weight" ]
+      , dd [] [ div [ class_ "skeleton skeleton-line" ] [] ]
+      ]
+  , h3 [] [ text "Base stats" ]
+  , ul [ class_ "stats" ] (Array.replicate 4 (li [] [ div [ class_ "skeleton skeleton-stat" ] [] ]))
+  ]
 
 viewPokemon :: Pokemon -> Html Message
 viewPokemon pokemon = article [ class_ "pokemon" ]

@@ -7,7 +7,7 @@ import Data.Foldable (for_)
 import Effect.Aff (Aff)
 import Example.Counter as Counter
 import Example.Parent as Parent
-import Foldkit.Query as Query
+import Foldkit.Locator as Locator
 import Foldkit.Scene as Scene
 import Foldkit.Story as Story
 import Foldkit.Test (Test, assertRight, test)
@@ -29,8 +29,8 @@ sceneTests =
   [ test "the parent view maps child messages back to the parent" do
       assertRight "parent scene"
         ( Scene.runScene Parent.update Parent.view Parent.initialModel do
-            Scene.expectExists (Query.namedRole "heading" "Counter")
-            Scene.click (Query.namedRole "button" "+")
-            Scene.expectText (Query.text "1") "1"
+            Scene.expectExists (Locator.namedRole "heading" "Counter")
+            Scene.click (Locator.namedRole "button" "+")
+            Scene.expectText (Locator.text "1") "1"
         )
   ]

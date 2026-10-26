@@ -16,13 +16,15 @@ test library has a real architecture to test.
 | `Command` | one-shot effects as data | implemented, result-typed | `Foldkit.Command` |
 | Story | model-level simulation | implemented as a monadic interpreter | `Foldkit.Story` |
 | Scene | view-level simulation | implemented as a monadic interpreter | `Foldkit.Scene` |
-| `test/query`, `test/matchers` | accessible locators and assertions | implemented subset (name and description) | `Foldkit.Query`, `Foldkit.Scene` |
+| `test/query`, `test/matchers` | accessible locators and assertions | implemented subset (name and description) | `Foldkit.Locator`, `Foldkit.Scene` |
 | `Html`, attributes, events | view DSL | implemented as a pure functor | `Foldkit.Html` |
 | Snabbdom, VDOM patch | DOM rendering | minimal full-replace runtime | `Foldkit.Runtime` |
 | SSR serializer | HTML string rendering | implemented | `Foldkit.Render` |
 | `Submodel`, `OutMessage` | parent/child composition | implemented with a plain record fold | `Foldkit.Submodel` |
 | `AsyncData` | remote data ADT | implemented | `Foldkit.AsyncData` |
 | `http/` | preconfigured HTTP layer | implemented as a testable Client over `ezfetch` | `Foldkit.Http` |
+| experimental `Query` | keyed async cache | implemented with per-entry generations | `Foldkit.Query` |
+| pagination | paged lists | implemented as a general cursor query | `Foldkit.Pagination` |
 | `effect/Schema`, `defineMessageUnion` | runtime schemas and callable unions | deleted; plain ADTs | — |
 | `Struct.modifyFields` | record updates | replaced by record update syntax | — |
 | Subscriptions | model-gated streams | designed, deferred | — |
@@ -337,8 +339,24 @@ Argonaut in charge of decoding and maps parse/decode failures to `DecodeError`.
 See [`http.md`](./http.md).
 
 The Pokedex uses this client for the list and detail endpoints. Its commands
-return `Either HttpError value`, so `update` only sees `LoadedList`/`FailedList`
-or `LoadedPokemon`/`FailedPokemon`.
+return `Either HttpError value`, so `update` only sees page and detail messages.
+
+### Query caches and pagination
+
+The Pokedex does not keep one `AsyncData` for details. It keeps a
+`Foldkit.Query` keyed by Pokémon name. Each entry has its own `AsyncData` and
+generation, so a stale response cannot overwrite a newer one. `loadIfMissing`
+starts a fetch only for `Idle`/`Failure`; a cached `Success` is a synchronous
+read with no command.
+
+The list is a `Foldkit.Pagination` model: items, next cursor, status, and a
+generation. A page appends; a failure keeps the loaded items; `hasMore` is false
+when the cursor is exhausted. The view puts `onVisible LoadMorePokemon` on a
+sentinel at the bottom, and the runtime's `IntersectionObserver` dispatches the
+message when it enters view.
+
+Both state machines are in the library, not the Pokedex. See
+[`query-cache.md`](./query-cache.md).
 
 ## 9. Mounts, managed resources, ports, and host integration
 
@@ -415,6 +433,9 @@ This is the point of the project, so it gets its own document:
   are order-independent multisets. `resolveExact` removes one instance at a time.
 - `Scene.send` injects an external message (a subscription, mount, or host
   event) and obeys the same pending-command guard as an interaction.
+- Locators live in `Foldkit.Locator`; the data query cache lives in
+  `Foldkit.Query`. The module names now match the two different meanings of
+  "query".
 - Scene interactions call the handler stored on the target element. Clicking a
   submit button falls through to the form's submit handler when no click handler
   exists. There is no DOM and no happy-dom.

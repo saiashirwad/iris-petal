@@ -5,17 +5,19 @@ module Foldkit.AsyncData
   , isPending
   , isSuccess
   , isFailure
-  , hasData
   , getData
   , getError
   , map
-  , match
+  , settle
   , revalidate
+  , revalidateOrLoad
+  , loadIfMissing
   )
   where
 
 import Prelude
 
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 
 data AsyncData value error
@@ -65,13 +67,6 @@ isFailure = case _ of
   Failure _ -> true
   _ -> false
 
-hasData :: forall value error. AsyncData value error -> Boolean
-hasData = case _ of
-  Success _ -> true
-  Refreshing _ -> true
-  Stale _ _ -> true
-  _ -> false
-
 getData :: forall value error. AsyncData value error -> Maybe value
 getData = case _ of
   Success value -> Just value
@@ -94,25 +89,29 @@ map f = case _ of
   Refreshing value -> Refreshing (f value)
   Stale value error -> Stale (f value) error
 
-match ::
-  forall value error result.
-  { idle :: Unit -> result
-  , loading :: Unit -> result
-  , success :: value -> result
-  , failure :: error -> result
-  , refreshing :: value -> result
-  , stale :: value -> error -> result
-  } -> AsyncData value error -> result
-match handlers = case _ of
-  Idle -> handlers.idle unit
-  Loading -> handlers.loading unit
-  Success value -> handlers.success value
-  Failure error -> handlers.failure error
-  Refreshing value -> handlers.refreshing value
-  Stale value error -> handlers.stale value error
+settle :: forall value error. AsyncData value error -> Either error value -> AsyncData value error
+settle previous result = case result of
+  Right value -> Success value
+  Left error -> case getData previous of
+    Just value -> Stale value error
+    Nothing -> Failure error
 
-revalidate :: forall value error. AsyncData value error -> AsyncData value error
+revalidate :: forall value error. AsyncData value error -> Maybe (AsyncData value error)
 revalidate = case _ of
-  Success value -> Refreshing value
-  Stale value error -> Refreshing value
-  other -> other
+  Success value -> Just (Refreshing value)
+  Stale value _ -> Just (Refreshing value)
+  _ -> Nothing
+
+revalidateOrLoad :: forall value error. AsyncData value error -> Maybe (AsyncData value error)
+revalidateOrLoad = case _ of
+  Idle -> Just Loading
+  Failure _ -> Just Loading
+  Success value -> Just (Refreshing value)
+  Stale value _ -> Just (Refreshing value)
+  _ -> Nothing
+
+loadIfMissing :: forall value error. AsyncData value error -> Maybe (AsyncData value error)
+loadIfMissing = case _ of
+  Idle -> Just Loading
+  Failure _ -> Just Loading
+  _ -> Nothing

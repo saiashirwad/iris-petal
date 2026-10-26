@@ -10,7 +10,7 @@ Story, Scene, accessible queries, server rendering, browser runtime, and Vite
 development setup are all here. The test suite is the part that matters most.
 
 ```text
-33 passed, 0 failed.
+37 passed, 0 failed.
 ```
 
 ## Quick start
@@ -50,12 +50,17 @@ iris run
 
 The example is a real app, not a fixture:
 
-- `Example.Pokedex.start` loads `https://pokeapi.co/api/v2/pokemon?limit=151`
-  through a command.
+- `Example.Pokedex.start` loads the first page of
+  `https://pokeapi.co/api/v2/pokemon` through a paginated query.
+- A sentinel at the bottom of the grid loads the next 24 when it enters view.
+  Scrolling reaches all 151.
 - The list is filtered client-side by name.
 - Selecting a card runs `FetchPokemonDetail` against the PokéAPI detail endpoint.
+- Details are cached by name. Selecting a cached card is synchronous and sends
+  no command.
 - The detail panel shows sprite, types, height, weight, and base stats.
-- Loading, failure, refresh, and success are modeled with `AsyncData`.
+- Loading uses fixed-size skeletons; the detail panel keeps the same height
+  before, during, and after a load.
 - The browser smoke test verifies the live page, not just the pure interpreter.
 
 ## Typed HTTP
@@ -163,16 +168,16 @@ A Scene test drives the rendered `Html` tree:
 
 ```purescript
 Scene.runScene Pokedex.update Pokedex.view loadedModel do
-  Scene.expectText (Query.text "Bulbasaur") "Bulbasaur"
-  Scene.typeText (Query.label "Search Pokémon") "char"
-  Scene.expectText (Query.text "Charmander") "Charmander"
-  Scene.expectAbsent (Query.text "Bulbasaur")
-  Scene.click (Query.namedRole "button" "Charmander")
+  Scene.expectText (Locator.text "Bulbasaur") "Bulbasaur"
+  Scene.typeText (Locator.label "Search Pokémon") "char"
+  Scene.expectText (Locator.text "Charmander") "Charmander"
+  Scene.expectAbsent (Locator.text "Bulbasaur")
+  Scene.click (Locator.namedRole "button" "Charmander")
   Scene.expectCommands
     [ Command.byDefinition Pokedex.fetchPokemonDetail ]
   Scene.resolve Pokedex.fetchPokemonDetail (Right samplePokemon)
-  Scene.expectText (Query.namedRole "heading" "Charmander") "Charmander"
-  Scene.expectTextContaining (Query.role "article") "Fire"
+  Scene.expectText (Locator.namedRole "heading" "Charmander") "Charmander"
+  Scene.expectTextContaining (Locator.role "article") "Fire"
   Scene.expectNone
 ```
 
@@ -208,7 +213,9 @@ message and again at the end of the run.
 src/Foldkit/Core.purs          Update, Program, constructors
 src/Foldkit/Command.purs       Command, Definition, Matcher
 src/Foldkit/Html.purs          pure Html/Attribute/KeyEvent tree
-src/Foldkit/Query.purs         accessible locators and queries
+src/Foldkit/Locator.purs       accessible locators and queries
+src/Foldkit/Query.purs         keyed AsyncData cache with generations
+src/Foldkit/Pagination.purs    cursor pages with append and retry
 src/Foldkit/Simulation.purs    shared pending-command state and rules
 src/Foldkit/Story.purs         model-level interpreter
 src/Foldkit/Scene.purs         view-level interpreter
@@ -240,6 +247,7 @@ Implemented:
 - Accessible locators and assertions, including name and description.
 - Click, type, submit, keydown, check; submit-button fallback to the form.
 - Submodel fold and OutMessage with a parent example.
+- Keyed query cache, cursor pagination, and viewport sentinel (`onVisible`).
 - AsyncData, typed HTTP with a testable `Client`, `renderToString`, and a minimal
   full-re-render browser runtime with focus restoration.
 - Pokédex app, Vite dev server, hot reload, and a headless browser smoke test.
@@ -255,6 +263,7 @@ elements, canvas, field validation, calendar, and DevTools.
 - [FoldKit → Iris module map](docs/foldkit-to-iris.md)
 - [Story and Scene design](docs/scene-design.md)
 - [Typed HTTP](docs/http.md)
+- [Query caches and pagination](docs/query-cache.md)
 - [Idiomatic PureScript standard](docs/idiomatic-purescript.md)
 - [Iris setup and workflow](docs/iris-setup.md)
 - [Decision trail](docs/decision-trail.tsv)

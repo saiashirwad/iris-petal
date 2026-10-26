@@ -18,6 +18,7 @@ module Foldkit.Html
   , onKeyDown
   , onFocus
   , onBlur
+  , onVisible
   , class_
   , id_
   , for_
@@ -32,6 +33,7 @@ module Foldkit.Html
   , title_
   , alt_
   , src_
+  , loading_
   , ariaLabel
   , ariaDescribedBy
   , ariaBusy
@@ -120,6 +122,7 @@ data Attribute message
   | OnKeyDown (KeyEvent -> message)
   | OnFocus message
   | OnBlur message
+  | OnVisible message
 
 instance functorHtml :: Functor Html where
   map f = case _ of
@@ -144,6 +147,7 @@ mapAttribute f = case _ of
   OnKeyDown handler -> OnKeyDown (f <<< handler)
   OnFocus message -> OnFocus (f message)
   OnBlur message -> OnBlur (f message)
+  OnVisible message -> OnVisible (f message)
 
 text :: forall message. String -> Html message
 text = Text
@@ -188,6 +192,9 @@ onFocus = OnFocus
 onBlur :: forall message. message -> Attribute message
 onBlur = OnBlur
 
+onVisible :: forall message. message -> Attribute message
+onVisible = OnVisible
+
 class_ :: forall message. String -> Attribute message
 class_ = Attribute "class"
 
@@ -229,6 +236,9 @@ alt_ = Attribute "alt"
 
 src_ :: forall message. String -> Attribute message
 src_ = Attribute "src"
+
+loading_ :: forall message. String -> Attribute message
+loading_ = Attribute "loading"
 
 ariaLabel :: forall message. String -> Attribute message
 ariaLabel = Attribute "aria-label"

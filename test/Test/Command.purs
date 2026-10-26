@@ -9,7 +9,7 @@ import Foldkit.Command (CommandName(..), Definition, command, define)
 import Foldkit.Command as Command
 import Foldkit.Core (Update, continue)
 import Foldkit.Html (Html, div, text)
-import Foldkit.Query as Query
+import Foldkit.Locator as Locator
 import Foldkit.Scene as Scene
 import Foldkit.Story as Story
 import Foldkit.Test (Test, assertRight, assertTrue, test)
@@ -101,7 +101,7 @@ tests =
       assertRight "scene send"
         ( Scene.runScene update view initialModel do
             Scene.send Sent
-            Scene.expectText (Query.text "1") "1"
+            Scene.expectText (Locator.text "1") "1"
             Scene.expectHasCommands [ Command.byDefinition ping ]
             Scene.resolveExact (command ping "a") (Completed "a")
             Scene.resolveExact (command ping "b") (Completed "b")

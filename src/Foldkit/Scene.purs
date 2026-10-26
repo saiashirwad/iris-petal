@@ -45,7 +45,7 @@ import Data.Tuple (Tuple(..))
 import Foldkit.Command (Command, Definition, Matcher)
 import Foldkit.Core (Update)
 import Foldkit.Html (Html, defaultKeyEvent)
-import Foldkit.Query as Query
+import Foldkit.Locator as Locator
 import Foldkit.Simulation as Simulation
 
 type SceneState model message out = Simulation.State model message out
@@ -53,7 +53,7 @@ type SceneState model message out = Simulation.State model message out
 type SceneEnv model message out =
   { update :: model -> message -> Update model message out
   , view :: model -> Html message
-  , scope :: Maybe Query.Locator
+  , scope :: Maybe Locator.Locator
   }
 
 type SceneM model message out =
@@ -85,103 +85,112 @@ send message = do
   updateFn <- asks _.update
   Simulation.send "when you sent a new Message" updateFn message
 
-click :: forall model message out. Query.Locator -> Scene model message out
+click :: forall model message out. Locator.Locator -> Scene model message out
 click locator = do
   ref <- resolveRef locator
-  case Query.findClickHandler ref of
+  case Locator.findClickHandler ref of
     Just message -> dispatch message
     Nothing ->
-      if Query.isSubmitButton ref
-      then case Query.findSubmitHandler ref of
+      if Locator.isSubmitButton ref
+      then case Locator.findSubmitHandler ref of
         Just message -> dispatch message
         Nothing -> throwError
           ( "I found an element matching "
-              <> Query.describe locator
+              <> Locator.describe locator
               <> " but it has no click handler and no submit handler on its form."
           )
       else throwError
         ( "I found an element matching "
-            <> Query.describe locator
+            <> Locator.describe locator
             <> " but neither it nor an ancestor has a click handler."
         )
 
-typeText :: forall model message out. Query.Locator -> String -> Scene model message out
+typeText :: forall model message out. Locator.Locator -> String -> Scene model message out
 typeText locator value = do
   ref <- resolveRef locator
-  case Query.findInputHandler ref of
-    Nothing -> throwError
-      ("I found an element matching " <> Query.describe locator <> " but it has no input handler.")
-    Just handler -> dispatch (handler value)
-
-submit :: forall model message out. Query.Locator -> Scene model message out
-submit locator = do
-  ref <- resolveRef locator
-  case Query.findSubmitHandler ref of
-    Nothing -> throwError
-      ("I found an element matching " <> Query.describe locator <> " but it has no submit handler.")
-    Just message -> dispatch message
-
-press :: forall model message out. Query.Locator -> String -> Scene model message out
-press locator key = do
-  ref <- resolveRef locator
-  case Query.findKeyDownHandler ref of
+  case Locator.findInputHandler ref of
     Nothing -> throwError
       ( "I found an element matching "
-          <> Query.describe locator
+          <> Locator.describe locator
+          <> " but it has no input handler."
+      )
+    Just handler -> dispatch (handler value)
+
+submit :: forall model message out. Locator.Locator -> Scene model message out
+submit locator = do
+  ref <- resolveRef locator
+  case Locator.findSubmitHandler ref of
+    Nothing -> throwError
+      ( "I found an element matching "
+          <> Locator.describe locator
+          <> " but it has no submit handler."
+      )
+    Just message -> dispatch message
+
+press :: forall model message out. Locator.Locator -> String -> Scene model message out
+press locator key = do
+  ref <- resolveRef locator
+  case Locator.findKeyDownHandler ref of
+    Nothing -> throwError
+      ( "I found an element matching "
+          <> Locator.describe locator
           <> " but it has no keydown handler."
       )
     Just handler -> dispatch (handler defaultKeyEvent { key = key })
 
-check :: forall model message out. Query.Locator -> Scene model message out
+check :: forall model message out. Locator.Locator -> Scene model message out
 check locator = do
   ref <- resolveRef locator
-  case Query.findCheckHandler ref of
+  case Locator.findCheckHandler ref of
     Nothing -> throwError
-      ("I found an element matching " <> Query.describe locator <> " but it has no change handler.")
-    Just handler -> dispatch (handler (not (Query.isChecked ref.element)))
+      ( "I found an element matching "
+          <> Locator.describe locator
+          <> " but it has no change handler."
+      )
+    Just handler -> dispatch (handler (not (Locator.isChecked ref.element)))
 
 within ::
-  forall model message out. Query.Locator -> Scene model message out -> Scene model message out
+  forall model message out. Locator.Locator -> Scene model message out -> Scene model message out
 within locator action = do
   env <- ask
   let
     scoped = case env.scope of
       Nothing -> locator
-      Just parent -> Query.within parent locator
+      Just parent -> Locator.within parent locator
   local (\current -> current { scope = Just scoped }) action
 
-expectExists :: forall model message out. Query.Locator -> Scene model message out
+expectExists :: forall model message out. Locator.Locator -> Scene model message out
 expectExists locator = void (resolveRef locator)
 
-expectAbsent :: forall model message out. Query.Locator -> Scene model message out
+expectAbsent :: forall model message out. Locator.Locator -> Scene model message out
 expectAbsent locator = do
   root <- currentRoot
   scoped <- scopedLocator locator
-  case Query.find scoped root of
+  case Locator.find scoped root of
     Nothing -> pure unit
     Just _ ->
-      throwError ("Expected no element matching " <> Query.describe scoped <> " but one exists.")
+      throwError ("Expected no element matching " <> Locator.describe scoped <> " but one exists.")
 
 expectElement ::
   forall model message out.
-  Query.Locator -> (Query.NodeRef message -> Maybe String) -> Scene model message out
+  Locator.Locator -> (Locator.NodeRef message -> Maybe String) -> Scene model message out
 expectElement locator check = do
   ref <- resolveRef locator
   case check ref of
     Nothing -> pure unit
     Just errorMessage -> throwError errorMessage
 
-expectText :: forall model message out. Query.Locator -> String -> Scene model message out
+expectText :: forall model message out. Locator.Locator -> String -> Scene model message out
 expectText locator expected = expectElement locator \ref ->
   let
-    actual = Query.normalizeWhitespace (Query.textContent (Query.targetHtml ref))
-    wanted = Query.normalizeWhitespace expected
+    actual = Locator.normalizeWhitespace (Locator.textContent (Locator.targetHtml ref))
+    wanted = Locator.normalizeWhitespace expected
   in
     if actual == wanted
     then Nothing
     else Just
       ( "Expected "
-          <> Query.describe locator
+          <> Locator.describe locator
           <> " to have text \""
           <> wanted
           <> "\" but received \""
@@ -189,17 +198,18 @@ expectText locator expected = expectElement locator \ref ->
           <> "\"."
       )
 
-expectTextContaining :: forall model message out. Query.Locator -> String -> Scene model message out
+expectTextContaining ::
+  forall model message out. Locator.Locator -> String -> Scene model message out
 expectTextContaining locator expected = expectElement locator \ref ->
   let
-    actual = Query.normalizeWhitespace (Query.textContent (Query.targetHtml ref))
-    wanted = Query.normalizeWhitespace expected
+    actual = Locator.normalizeWhitespace (Locator.textContent (Locator.targetHtml ref))
+    wanted = Locator.normalizeWhitespace expected
   in
     if Str.contains (Str.Pattern wanted) actual
     then Nothing
     else Just
       ( "Expected "
-          <> Query.describe locator
+          <> Locator.describe locator
           <> " to contain text \""
           <> wanted
           <> "\" but received \""
@@ -207,14 +217,14 @@ expectTextContaining locator expected = expectElement locator \ref ->
           <> "\"."
       )
 
-expectValue :: forall model message out. Query.Locator -> String -> Scene model message out
+expectValue :: forall model message out. Locator.Locator -> String -> Scene model message out
 expectValue locator expected = expectElement locator \ref ->
-  case Query.attributeValue "value" (Query.targetHtml ref) of
+  case Locator.attributeValue "value" (Locator.targetHtml ref) of
     Just actual
       | actual == expected -> Nothing
       | otherwise -> Just
         ( "Expected "
-            <> Query.describe locator
+            <> Locator.describe locator
             <> " to have value \""
             <> expected
             <> "\" but received \""
@@ -223,39 +233,39 @@ expectValue locator expected = expectElement locator \ref ->
         )
     Nothing -> Just
       ( "Expected "
-          <> Query.describe locator
+          <> Locator.describe locator
           <> " to have value \""
           <> expected
           <> "\" but it has no value."
       )
 
-expectDisabled :: forall model message out. Query.Locator -> Scene model message out
+expectDisabled :: forall model message out. Locator.Locator -> Scene model message out
 expectDisabled locator = expectElement locator \ref ->
-  if Query.isDisabled ref.element
+  if Locator.isDisabled ref.element
   then Nothing
-  else Just ("Expected " <> Query.describe locator <> " to be disabled but it is enabled.")
+  else Just ("Expected " <> Locator.describe locator <> " to be disabled but it is enabled.")
 
-expectEnabled :: forall model message out. Query.Locator -> Scene model message out
+expectEnabled :: forall model message out. Locator.Locator -> Scene model message out
 expectEnabled locator = expectElement locator \ref ->
-  if Query.isDisabled ref.element
-  then Just ("Expected " <> Query.describe locator <> " to be enabled but it is disabled.")
+  if Locator.isDisabled ref.element
+  then Just ("Expected " <> Locator.describe locator <> " to be enabled but it is disabled.")
   else Nothing
 
-expectChecked :: forall model message out. Query.Locator -> Scene model message out
+expectChecked :: forall model message out. Locator.Locator -> Scene model message out
 expectChecked locator = expectElement locator \ref ->
-  if Query.isChecked ref.element
+  if Locator.isChecked ref.element
   then Nothing
-  else Just ("Expected " <> Query.describe locator <> " to be checked but it is not.")
+  else Just ("Expected " <> Locator.describe locator <> " to be checked but it is not.")
 
 expectAttribute ::
-  forall model message out. Query.Locator -> String -> String -> Scene model message out
+  forall model message out. Locator.Locator -> String -> String -> Scene model message out
 expectAttribute locator attribute expected = expectElement locator \ref ->
-  case Query.attributeValue attribute (Query.targetHtml ref) of
+  case Locator.attributeValue attribute (Locator.targetHtml ref) of
     Just actual
       | actual == expected -> Nothing
       | otherwise -> Just
         ( "Expected "
-            <> Query.describe locator
+            <> Locator.describe locator
             <> " to have attribute "
             <> attribute
             <> "=\""
@@ -266,7 +276,7 @@ expectAttribute locator attribute expected = expectElement locator \ref ->
         )
     Nothing -> Just
       ( "Expected "
-          <> Query.describe locator
+          <> Locator.describe locator
           <> " to have attribute "
           <> attribute
           <> "=\""
@@ -274,19 +284,20 @@ expectAttribute locator attribute expected = expectElement locator \ref ->
           <> "\" but the attribute is absent."
       )
 
-expectAccessibleName :: forall model message out. Query.Locator -> String -> Scene model message out
+expectAccessibleName ::
+  forall model message out. Locator.Locator -> String -> Scene model message out
 expectAccessibleName locator expected = do
   root <- currentRoot
   expectElement locator \ref ->
     let
-      actual = Query.normalizeWhitespace (Query.accessibleName root (Query.targetHtml ref))
-      wanted = Query.normalizeWhitespace expected
+      actual = Locator.normalizeWhitespace (Locator.accessibleName root (Locator.targetHtml ref))
+      wanted = Locator.normalizeWhitespace expected
     in
       if actual == wanted
       then Nothing
       else Just
         ( "Expected "
-            <> Query.describe locator
+            <> Locator.describe locator
             <> " to have accessible name \""
             <> wanted
             <> "\" but received \""
@@ -295,19 +306,20 @@ expectAccessibleName locator expected = do
         )
 
 expectAccessibleDescription ::
-  forall model message out. Query.Locator -> String -> Scene model message out
+  forall model message out. Locator.Locator -> String -> Scene model message out
 expectAccessibleDescription locator expected = do
   root <- currentRoot
   expectElement locator \ref ->
     let
-      actual = Query.normalizeWhitespace (Query.accessibleDescription root (Query.targetHtml ref))
-      wanted = Query.normalizeWhitespace expected
+      actual =
+        Locator.normalizeWhitespace (Locator.accessibleDescription root (Locator.targetHtml ref))
+      wanted = Locator.normalizeWhitespace expected
     in
       if actual == wanted
       then Nothing
       else Just
         ( "Expected "
-            <> Query.describe locator
+            <> Locator.describe locator
             <> " to have accessible description \""
             <> wanted
             <> "\" but received \""
@@ -315,19 +327,19 @@ expectAccessibleDescription locator expected = do
             <> "\"."
         )
 
-expectCount :: forall model message out. Int -> Query.Locator -> Scene model message out
+expectCount :: forall model message out. Int -> Locator.Locator -> Scene model message out
 expectCount expected locator = do
   root <- currentRoot
   scoped <- scopedLocator locator
   let
-    actual = Array.length (Query.findAll scoped root)
+    actual = Array.length (Locator.findAll scoped root)
   if actual == expected
   then pure unit
   else throwError
     ( "Expected "
         <> show expected
         <> " elements matching "
-        <> Query.describe scoped
+        <> Locator.describe scoped
         <> " but found "
         <> show actual
         <> "."
@@ -371,22 +383,23 @@ currentRoot = do
   state <- get
   pure (env.view state.model)
 
-scopedLocator :: forall model message out. Query.Locator -> SceneM model message out Query.Locator
+scopedLocator ::
+  forall model message out. Locator.Locator -> SceneM model message out Locator.Locator
 scopedLocator locator = do
   scope <- asks _.scope
   pure case scope of
     Nothing -> locator
-    Just parent -> Query.within parent locator
+    Just parent -> Locator.within parent locator
 
 resolveRef ::
-  forall model message out. Query.Locator -> SceneM model message out (Query.NodeRef message)
+  forall model message out. Locator.Locator -> SceneM model message out (Locator.NodeRef message)
 resolveRef locator = do
   root <- currentRoot
   scoped <- scopedLocator locator
-  case Query.findRef scoped root of
+  case Locator.findRef scoped root of
     Just ref -> pure ref
     Nothing -> throwError
       ( "I could not find an element matching "
-          <> Query.describe scoped
+          <> Locator.describe scoped
           <> ".\n\nCheck that the view renders it in the current state."
       )

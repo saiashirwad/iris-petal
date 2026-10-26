@@ -31,6 +31,7 @@ foreign import setAttribute :: Element -> String -> String -> Effect Unit
 foreign import removeAttribute :: Element -> String -> Effect Unit
 foreign import setProperty :: Element -> String -> String -> Effect Unit
 foreign import addEventListener :: Element -> String -> (DomEvent -> Effect Unit) -> Effect Unit
+foreign import observeVisible :: Element -> Effect Unit -> Effect Unit
 foreign import eventValue :: DomEvent -> String
 foreign import eventChecked :: DomEvent -> Boolean
 foreign import eventKey :: DomEvent -> String
@@ -114,6 +115,7 @@ renderAttribute dispatchMessage node = case _ of
     dispatchMessage (handler (keyEvent event))
   OnFocus message -> addEventListener node "focus" \_ -> dispatchMessage message
   OnBlur message -> addEventListener node "blur" \_ -> dispatchMessage message
+  OnVisible message -> observeVisible node (dispatchMessage message)
 
 keyEvent :: DomEvent -> KeyEvent
 keyEvent event =
