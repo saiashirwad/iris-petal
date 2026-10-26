@@ -12,8 +12,26 @@ export const createElement = (tag) => () => document.createElement(tag);
 
 export const createTextNode = (value) => () => document.createTextNode(value);
 
+export const childNodes = (element) => () => Array.from(element.childNodes);
+
+export const firstChild = (element) => () => {
+  const child = element.firstChild;
+  if (child === null) {
+    throw new Error("Expected the rendered root to have a child node.");
+  }
+  return child;
+};
+
 export const appendChild = (parent) => (child) => () => {
   parent.appendChild(child);
+};
+
+export const removeChild = (parent) => (child) => () => {
+  parent.removeChild(child);
+};
+
+export const replaceChild = (parent) => (next) => (previous) => () => {
+  parent.replaceChild(next, previous);
 };
 
 export const clearChildren = (element) => () => {
@@ -34,10 +52,52 @@ export const setProperty = (element) => (name) => (value) => () => {
   element[name] = value;
 };
 
-export const addEventListener = (element) => (eventName) => (handler) => () => {
-  element.addEventListener(eventName, (event) => {
+export const setNodeValue = (node) => (value) => () => {
+  node.nodeValue = value;
+};
+
+const listenersKey = "__foldkitListeners";
+
+export const setEventListener = (element) => (eventName) => (handler) => () => {
+  if (element[listenersKey] === undefined) {
+    element[listenersKey] = {};
+  }
+  const previous = element[listenersKey][eventName];
+  if (previous !== undefined) {
+    element.removeEventListener(eventName, previous);
+  }
+  const listener = (event) => {
     handler(event)();
-  });
+  };
+  element[listenersKey][eventName] = listener;
+  element.addEventListener(eventName, listener);
+};
+
+export const removeEventListener = (element) => (eventName) => () => {
+  const listeners = element[listenersKey];
+  if (listeners === undefined) return;
+  const listener = listeners[eventName];
+  if (listener !== undefined) {
+    element.removeEventListener(eventName, listener);
+    delete listeners[eventName];
+  }
+};
+
+export const observeVisible = (element) => (handler) => () => {
+  if (typeof IntersectionObserver === "undefined") {
+    handler();
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        handler();
+      }
+    },
+    { rootMargin: "240px 0px" },
+  );
+  observer.observe(element);
 };
 
 export const eventValue = (event) => {
@@ -85,21 +145,4 @@ export const restoreFocus = (state) => () => {
   if (typeof element.setSelectionRange === "function") {
     element.setSelectionRange(state.start, state.end);
   }
-};
-
-export const observeVisible = (element) => (handler) => () => {
-  if (typeof IntersectionObserver === "undefined") {
-    handler();
-    return;
-  }
-  const observer = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        observer.disconnect();
-        handler();
-      }
-    },
-    { rootMargin: "240px 0px" },
-  );
-  observer.observe(element);
 };

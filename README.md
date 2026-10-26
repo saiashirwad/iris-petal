@@ -24,7 +24,7 @@ npm run dev
 
 Open <http://localhost:5173>. `npm run dev` runs `iris watch` and Vite together.
 A PureScript edit rebuilds the output; Vite updates the page. The search input
-keeps focus across the full re-render.
+keeps focus across re-renders.
 
 Other commands:
 
@@ -223,7 +223,7 @@ src/Foldkit/Submodel.purs      parent/child fold and OutMessage
 src/Foldkit/AsyncData.purs     remote data ADT
 src/Foldkit/Http.purs          typed Client over ezfetch
 src/Foldkit/Render.purs        Html -> String
-src/Foldkit/Runtime.purs       browser runtime (full re-render + focus restore)
+src/Foldkit/Runtime.purs       browser runtime (same-tag patch + focus restore)
 src/Foldkit/Test.purs          small Aff test runner
 src/Example/Pokedex.purs       the real PokéAPI app
 src/Example/Pokedex/Browser.purs
@@ -248,8 +248,8 @@ Implemented:
 - Click, type, submit, keydown, check; submit-button fallback to the form.
 - Submodel fold and OutMessage with a parent example.
 - Keyed query cache, cursor pagination, and viewport sentinel (`onVisible`).
-- AsyncData, typed HTTP with a testable `Client`, `renderToString`, and a minimal
-  full-re-render browser runtime with focus restoration.
+- AsyncData, typed HTTP with a testable `Client`, `renderToString`, and a small
+  same-tag DOM patch with focus restoration.
 - Pokédex app, Vite dev server, hot reload, and a headless browser smoke test.
 - A small test runner run by `iris test`.
 

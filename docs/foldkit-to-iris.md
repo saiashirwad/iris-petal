@@ -251,11 +251,15 @@ lists, headings, tables, and the ARIA attributes the test suite needs. Missing
 attributes can be added with `attr "name"`. Missing elements can be added with
 `element "tag"`.
 
-`Foldkit.Runtime.runApplication` is a real browser runtime, but intentionally a
-first slice: it renders the whole tree on every message. It does not diff. Focus,
-selection, and scroll are therefore not preserved across updates. A Snabbdom-style
-differ, keyed children, and hydration are the next runtime work; they are not
-needed to prove the architecture or the test story.
+`Foldkit.Runtime.runApplication` is a real browser runtime with a small
+same-tag patch. The first render builds the tree. Later renders reuse an element
+when its tag matches, update attributes and listeners in place, and append or
+remove children. That preserves focus, selection, scroll, and card images across
+a click. It is not keyed: a reordered list can reuse a node for a different item.
+Elements with `OnVisible` are replaced so a fresh observer attaches. `Fragment`
+and `Empty` fall back to a full subtree replace. A keyed differ and hydration are
+the next runtime work; they are not needed to prove the architecture or the test
+story.
 
 FoldKit's `OnMount`, `OnUnmount`, hooks, lazy slots, and boundary dispatch are
 deferred with the runtime. Their PureScript design is smaller because the view is

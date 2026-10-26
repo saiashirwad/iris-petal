@@ -13,7 +13,7 @@ D11	design	Encode typed command args to Json at definition construction and comp
 D12	design	Do not implement expectIgnored/expectHandled; handlers are total typed actions	Port FoldKit's ignored-interaction state machine	Foldkit.Html.Attribute; Foldkit.Scene.click	accepted
 D13	design	Submodel composition is one record with read/write/update/toParentMessage/onOutMessage	Four ChildFold shapes with type-level policy switches	Foldkit.Submodel; Example.Parent; test Test.Parent	accepted
 D14	design	No runtime Schema layer for models or messages	Schema.Struct plus defineMessageUnion; Generic codecs	Actor model and message ADTs; docs/idiomatic-purescript.md	accepted
-D15	design	Browser runtime is a full re-render, not a keyed VDOM differ	Port Snabbdom; build a differ now; SSR only	Foldkit.Runtime; docs/foldkit-to-iris.md	accepted as slice
+D15	design	Browser runtime is a small same-tag DOM patch, not a keyed VDOM differ	Port Snabbdom; build a keyed differ now; SSR only	Foldkit.Runtime; docs/foldkit-to-iris.md	superseded by D25
 V01	verify	iris build succeeds	none	src/Main.purs imports; output/Main/index.js	verified
 V02	verify	First Story/Scene suite passes 18/18	none	iris test output before command matcher work	verified
 V03	review	Cross-model review returned ADOPT WITH CHANGES	none	Reviewer: result-typed definitions, definition matchers, Scene.send, shared actions	verified
@@ -24,7 +24,7 @@ V07	docs	README, Scene design, module map, idempotent style standard, Iris setup
 V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 41 passed, 0 failed	verified
 D16	design	Use a typed Client record over ezfetch for HTTP, not a raw JS fetch FFI	Raw fetch FFI; affjax; fetch; custom XMLHttpRequest	Foldkit.Http; docs/http.md; example Pokedex	accepted
 D17	design	Serve the Pokedex with Vite while iris watch rebuilds output	iris watch only; webpack; esbuild; a custom dev server	package.json; vite.config.js; scripts/dev.sh	accepted
-D18	design	Preserve focused element id/selection across the full re-render	Build a VDOM differ now; use uncontrolled inputs	Foldkit.Runtime captureFocus/restoreFocus; npm run smoke	accepted as slice
+D18	design	Preserve focused element id/selection across re-renders	Build a VDOM differ now; use uncontrolled inputs	Foldkit.Runtime captureFocus/restoreFocus; npm run smoke	accepted
 V09	verify	Full suite passes 41/41 after Pokedex, HTTP, Query, and Pagination	none	iris test output: 41 passed, 0 failed; test/Test/Pokedex.purs; test/Test/Http.purs; test/Test/**	verified
 V10	verify	HMR updates a live page after a PureScript edit	Vite full reload only; no watcher	Playwright watched the h1 change from a source edit; iris watch rebuilt output; scripts/dev.sh; HMR smoke run	verified
 V11	verify	Real PokéAPI list fetch and Argonaut decode returns 151 entries	Mock only	iris run --main Example.PokedexSmoke printed OK 151 Pokémon; Temporary smoke module	verified
@@ -38,3 +38,5 @@ D24	design	Use fixed-size skeletons and min-height panels to prevent click-time 
 V13	verify	Browser smoke covers list, search focus, filter, detail, pagination, and stable detail height	Pure tests only	npm run smoke printed Pokedex smoke passed; 600px before/loading/after; scripts/smoke-pokedex.mjs	verified
 V14	verify	Scrolling loads all 151 Pokémon through the paginated query	Load 151 in one request	Smoke waits for "All 151 Pokémon loaded."; Pokedex fetchPokemonPage; onVisible	verified
 V15	verify	Cached detail click sends no command and keeps the panel	Refetch every click	Test.Pokedex cached scene; smoke; foldkit.Query	verified
+D25	design	Reuse same-tag elements and replace listeners in place to stop image flashes on selection	Full replace; keyed differ; CSS background images	Foldkit.Runtime patchRoot/patchElement/patchChildren; skeleton screenshot; npm run smoke	accepted
+V16	verify	Detail skeleton keeps list sprites visible and panel height stable	Full re-render; text loading state	Screenshot during delayed detail fetch; smoke before=600 loading=600 after=600	scripts/smoke-pokedex.mjs	verified
