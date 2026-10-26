@@ -19,6 +19,7 @@ module Foldkit.Scene
   , expectChecked
   , expectAttribute
   , expectAccessibleName
+  , expectAccessibleDescription
   , expectCount
   , resolve
   , resolveExact
@@ -287,6 +288,27 @@ expectAccessibleName locator expected = do
         ( "Expected "
             <> Query.describe locator
             <> " to have accessible name \""
+            <> wanted
+            <> "\" but received \""
+            <> actual
+            <> "\"."
+        )
+
+expectAccessibleDescription ::
+  forall model message out. Query.Locator -> String -> Scene model message out
+expectAccessibleDescription locator expected = do
+  root <- currentRoot
+  expectElement locator \ref ->
+    let
+      actual = Query.normalizeWhitespace (Query.accessibleDescription root (Query.targetHtml ref))
+      wanted = Query.normalizeWhitespace expected
+    in
+      if actual == wanted
+      then Nothing
+      else Just
+        ( "Expected "
+            <> Query.describe locator
+            <> " to have accessible description \""
             <> wanted
             <> "\" but received \""
             <> actual

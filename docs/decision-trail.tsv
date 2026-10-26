@@ -17,8 +17,8 @@ D15	design	Browser runtime is a full re-render, not a keyed VDOM differ	Port Sna
 V01	verify	iris build succeeds	none	src/Main.purs imports; output/Main/index.js	verified
 V02	verify	First Story/Scene suite passes 18/18	none	iris test output before command matcher work	verified
 V03	review	Cross-model review returned ADOPT WITH CHANGES	none	Reviewer: result-typed definitions, definition matchers, Scene.send, shared actions	verified
-V04	verify	Command guarantee suite passes 25/25	none	iris test output: 25 passed, 0 failed	test/Test/Command.purs; test/Test/**	verified
+V04	verify	Command guarantee suite passes 26/26	none	iris test output: 26 passed, 0 failed	test/Test/Command.purs; test/Test/Accessibility.purs; test/Test/**	verified
 V05	verify	Iris 0.1.13 nested case bug in Story.runStory	none	UnreportedUnknownType then successful build with maybe	observed; workaround committed
 V06	verify	Cross-model judge session was unavailable with Unauthorized on first attempt	Retry succeeded with poteto-reviewer	Reviewer report in session	observed; retry verified
 V07	docs	README, Scene design, module map, idempotent style standard, Iris setup, decision trail	none	docs/*.md; README.md	accepted
-V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 25 passed, 0 failed	verified
+V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 26 passed, 0 failed	verified

@@ -35,9 +35,6 @@ module Foldkit.Query
   , textContent
   , normalizeWhitespace
   , attributeValue
-  , hasAttribute
-  , booleanAttribute
-  , classList
   , accessibleName
   , accessibleDescription
   )
@@ -47,7 +44,7 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Data.Array as Array
-import Data.Foldable (all, any, elem, intercalate)
+import Data.Foldable (any, elem, intercalate)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.String as Str
 import Data.Tuple (Tuple(..))
@@ -274,20 +271,6 @@ attributeValue key = case _ of
   Element element -> lookupAttribute key element.attributes
   _ -> Nothing
 
-hasAttribute :: forall message. String -> Html message -> Boolean
-hasAttribute key = case _ of
-  Element element -> hasAttributeElement key element
-  _ -> false
-
-booleanAttribute :: forall message. String -> Html message -> Maybe Boolean
-booleanAttribute key = case _ of
-  Element element -> booleanAttributeElement key element
-  _ -> Nothing
-
-classList :: forall message. Html message -> Array String
-classList html = Array.filter (not <<< Str.null)
-  (Str.split (Str.Pattern " ") (fromMaybe "" (attributeValue "class" html)))
-
 lookupAttribute :: forall message. String -> Array (Attribute message) -> Maybe String
 lookupAttribute key = Array.findMap case _ of
   Attribute name value
@@ -297,8 +280,7 @@ lookupAttribute key = Array.findMap case _ of
   _ -> Nothing
 
 hasAttributeElement :: forall message. String -> Html.Element message -> Boolean
-hasAttributeElement key element =
-  isJust (lookupAttribute key element.attributes) || isJust (booleanAttributeElement key element)
+hasAttributeElement key element = isJust (lookupAttribute key element.attributes)
 
 booleanAttributeElement :: forall message. String -> Html.Element message -> Maybe Boolean
 booleanAttributeElement key element = Array.findMap
@@ -398,18 +380,6 @@ headingLevel element = case element.tag of
   "h5" -> Just 5
   "h6" -> Just 6
   _ -> Nothing
-
-isDisabled :: forall message. Html.Element message -> Boolean
-isDisabled element = booleanAttributeElement "disabled" element
-  == Just true
-  || lookupAttribute "aria-disabled" element.attributes
-  == Just "true"
-
-isChecked :: forall message. Html.Element message -> Boolean
-isChecked element = booleanAttributeElement "checked" element
-  == Just true
-  || lookupAttribute "aria-checked" element.attributes
-  == Just "true"
 
 implicitRoles :: forall message. Html.Element message -> Array String
 implicitRoles element = case element.tag of

@@ -9,7 +9,7 @@ accessible queries, server rendering, and a minimal browser runtime are all
 implemented in PureScript. The test suite is the part that matters most.
 
 ```text
-25 passed, 0 failed.
+26 passed, 0 failed.
 ```
 
 ## Quick start
