@@ -5,6 +5,7 @@ import Prelude
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Foldkit.Test (runTests, suite)
+import Test.Command as CommandTests
 import Test.Counter as Counter
 import Test.Parent as Parent
 import Test.Render as Render
@@ -15,6 +16,7 @@ main :: Effect Unit
 main = launchAff_
   ( runTests
       ( suite "Counter" (Counter.storyTests <> Counter.sceneTests)
+          <> suite "Command" CommandTests.tests
           <> suite "Parent" (Parent.storyTests <> Parent.sceneTests)
           <> suite "Weather story" WeatherStory.storyTests
           <> suite "Weather scene" WeatherScene.sceneTests

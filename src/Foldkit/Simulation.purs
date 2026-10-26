@@ -96,8 +96,8 @@ resolveExact ::
 resolveExact updateFn commandValue resultMessage = do
   state <- get
   case
-    resolveBy (Command.describe commandValue) (Command.matches commandValue) updateFn resultMessage
-      state
+    resolveFirstBy (Command.describe commandValue) (Command.matches commandValue) updateFn
+      resultMessage state
   of
     Left errorMessage -> throwError errorMessage
     Right next -> put next
@@ -228,6 +228,26 @@ resolveBy description predicate updateFn message state = case Array.length match
     )
   where
   matching = Array.filter predicate state.commands
+
+resolveFirstBy ::
+  forall model message out.
+  String ->
+  (Command message -> Boolean) ->
+  (model -> message -> Update model message out) ->
+  message ->
+  State model message out ->
+  Either String (State model message out)
+resolveFirstBy description predicate updateFn message state =
+  case removeFirstBy predicate state.commands of
+    Nothing -> Left (missingCommandError description state.commands)
+    Just remaining -> Right (apply updateFn message state { commands = remaining })
+
+missingCommandError :: forall message. String -> Array (Command message) -> String
+missingCommandError description commands = "I tried to resolve \""
+  <> description
+  <> "\" but no matching pending Command was found.\n\nPending Commands:\n"
+  <> formatCommands commands
+  <> "\n\nMake sure the previous Message produced this Command."
 
 exactError :: forall message. Array (Matcher message) -> Array (Command message) -> Maybe String
 exactError expected actual =

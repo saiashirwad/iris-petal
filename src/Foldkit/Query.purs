@@ -315,17 +315,13 @@ booleanAttributeElement key element = Array.findMap
   element.attributes
 
 normalizeWhitespace :: String -> String
-normalizeWhitespace value = Str.trim
-  ( intercalate " "
-      ( Array.filter (not <<< Str.null)
-          ( Array.foldl
-              ( \chunks pattern ->
-                  Array.concatMap (\chunk -> Str.split (Str.Pattern pattern) chunk) chunks
-              )
-              [ value ] [ " ", "\n", "\t", "\r" ]
-          )
-      )
-  )
+normalizeWhitespace = Str.trim
+  <<< intercalate " "
+  <<< Array.filter (not <<< Str.null)
+  <<< Str.split (Str.Pattern " ")
+  <<< Str.replaceAll (Str.Pattern "\n") (Str.Replacement " ")
+  <<< Str.replaceAll (Str.Pattern "\t") (Str.Replacement " ")
+  <<< Str.replaceAll (Str.Pattern "\r") (Str.Replacement " ")
 
 matchesText :: forall message. String -> Boolean -> NodeRef message -> Boolean
 matchesText target exact ref =

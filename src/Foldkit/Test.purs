@@ -4,8 +4,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.Either (Either(..), isLeft)
-import Data.Traversable (for)
-import Data.Tuple (Tuple(..))
+import Data.TraversableWithIndex (traverseWithIndex)
 import Effect (Effect)
 import Effect.Aff (Aff, try)
 import Effect.Class (liftEffect)
@@ -25,13 +24,22 @@ suite prefix = map \value -> value { name = prefix <> " › " <> value.name }
 
 runTests :: Array Test -> Aff Unit
 runTests tests = do
-  results <- for (Array.mapWithIndex Tuple tests) \(Tuple index value) -> do
-    result <- try value.run
-    liftEffect case result of
-      Left error -> log
-        ("FAIL " <> show (index + 1) <> ". " <> value.name <> "\n     " <> Exception.message error)
-      Right _ -> log ("PASS " <> show (index + 1) <> ". " <> value.name)
-    pure result
+  results <- traverseWithIndex
+    ( \index value -> do
+        result <- try value.run
+        liftEffect case result of
+          Left error -> log
+            ( "FAIL "
+                <> show (index + 1)
+                <> ". "
+                <> value.name
+                <> "\n     "
+                <> Exception.message error
+            )
+          Right _ -> log ("PASS " <> show (index + 1) <> ". " <> value.name)
+        pure result
+    )
+    tests
   let
     failures = Array.length (Array.filter isLeft results)
   liftEffect do
