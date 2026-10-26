@@ -26,17 +26,31 @@ export const appendChild = (parent) => (child) => () => {
   parent.appendChild(child);
 };
 
+const disconnectTree = (node) => {
+  if (node.__foldkitIntersectionObserver !== undefined) {
+    node.__foldkitIntersectionObserver.disconnect();
+    delete node.__foldkitIntersectionObserver;
+  }
+  for (const child of node.children ?? []) {
+    disconnectTree(child);
+  }
+};
+
 export const removeChild = (parent) => (child) => () => {
+  disconnectTree(child);
   parent.removeChild(child);
 };
 
 export const replaceChild = (parent) => (next) => (previous) => () => {
+  disconnectTree(previous);
   parent.replaceChild(next, previous);
 };
 
 export const clearChildren = (element) => () => {
   while (element.firstChild !== null) {
-    element.removeChild(element.firstChild);
+    const child = element.firstChild;
+    disconnectTree(child);
+    element.removeChild(child);
   }
 };
 
@@ -92,11 +106,13 @@ export const observeVisible = (element) => (handler) => () => {
     (entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
         observer.disconnect();
+        delete element.__foldkitIntersectionObserver;
         handler();
       }
     },
     { rootMargin: "240px 0px" },
   );
+  element.__foldkitIntersectionObserver = observer;
   observer.observe(element);
 };
 

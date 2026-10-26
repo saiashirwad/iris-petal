@@ -19,6 +19,7 @@ Requirements: Iris 0.1.13, Node 22 or newer, Spago 1.0.4.
 
 ```sh
 npm install
+npx playwright install chromium   # once, for npm run smoke
 npm run dev
 ```
 

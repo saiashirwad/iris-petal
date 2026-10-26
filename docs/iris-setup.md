@@ -87,6 +87,7 @@ Install the JavaScript tooling once:
 
 ```sh
 npm install
+npx playwright install chromium   # once, for the smoke test
 ```
 
 Start the live development loop:
