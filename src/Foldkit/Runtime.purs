@@ -15,6 +15,7 @@ import Foldkit.Command (Command)
 import Foldkit.Command as Command
 import Foldkit.Core (Program, Update)
 import Foldkit.Html (Attribute(..), Html(..), KeyEvent)
+import Foldkit.Html as Html
 
 type Application model message input =
   { program :: Program model message input Void, input :: input, containerId :: String }
