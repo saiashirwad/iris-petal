@@ -116,7 +116,7 @@ update ::
   Message item cursor error -> Model item cursor error -> Model item cursor error
 update message model = case message of
   CompletedFetch generation result ->
-    if generation /= model.generation
+    if generation /= model.generation || not (isPending model.status)
     then model
     else case result of
       Left error -> model { status = Failure error }

@@ -10,7 +10,7 @@ Story, Scene, accessible queries, server rendering, browser runtime, and Vite
 development setup are all here. The test suite is the part that matters most.
 
 ```text
-37 passed, 0 failed.
+41 passed, 0 failed.
 ```
 
 ## Quick start

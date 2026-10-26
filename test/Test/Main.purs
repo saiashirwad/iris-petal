@@ -9,6 +9,7 @@ import Test.Accessibility as Accessibility
 import Test.Command as CommandTests
 import Test.Counter as Counter
 import Test.Http as HttpTests
+import Test.Pagination as PaginationTests
 import Test.Parent as Parent
 import Test.Pokedex as Pokedex
 import Test.Render as Render
@@ -21,6 +22,7 @@ main = launchAff_
       ( suite "Counter" (Counter.storyTests <> Counter.sceneTests)
           <> suite "Accessibility" Accessibility.tests
           <> suite "Command" CommandTests.tests
+          <> suite "Pagination" PaginationTests.tests
           <> suite "Parent" (Parent.storyTests <> Parent.sceneTests)
           <> suite "Pokedex" (Pokedex.storyTests <> Pokedex.sceneTests)
           <> suite "HTTP" HttpTests.tests
