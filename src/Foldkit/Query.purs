@@ -23,7 +23,6 @@ module Foldkit.Query
   , findAll
   , findRef
   , targetHtml
-  , targetTag
   , findClickHandler
   , findInputHandler
   , findChangeHandler
@@ -196,9 +195,6 @@ findRef locator root = Array.head (refsFor locator root)
 
 targetHtml :: forall message. NodeRef message -> Html message
 targetHtml ref = Element ref.element
-
-targetTag :: forall message. NodeRef message -> String
-targetTag ref = ref.element.tag
 
 handlerOn :: forall message value. (Attribute message -> Maybe value) -> Html message -> Maybe value
 handlerOn extract = case _ of
