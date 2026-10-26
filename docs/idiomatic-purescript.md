@@ -93,6 +93,8 @@ a `Show` instance that cannot exist.
 - `Aff` appears only in `Command.run` and the browser runtime.
 - The test interpreter resolves commands with values; it never runs them.
 - The renderer is a pure fold from `Html` to `String`.
+- HTTP is a `Client` record (`send :: Request -> Aff (Either HttpError Response)`),
+  not a typeclass or a service layer; `pureClient` is the test seam.
 - FFI is a thin edge: DOM operations in `Foldkit.Runtime.js`, exit code in
   `Foldkit.Test.js`.
 

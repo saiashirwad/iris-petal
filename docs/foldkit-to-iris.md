@@ -22,6 +22,7 @@ test library has a real architecture to test.
 | SSR serializer | HTML string rendering | implemented | `Foldkit.Render` |
 | `Submodel`, `OutMessage` | parent/child composition | implemented with a plain record fold | `Foldkit.Submodel` |
 | `AsyncData` | remote data ADT | implemented | `Foldkit.AsyncData` |
+| `http/` | preconfigured HTTP layer | implemented as a testable Client over `ezfetch` | `Foldkit.Http` |
 | `effect/Schema`, `defineMessageUnion` | runtime schemas and callable unions | deleted; plain ADTs | — |
 | `Struct.modifyFields` | record updates | replaced by record update syntax | — |
 | Subscriptions | model-gated streams | designed, deferred | — |
@@ -307,7 +308,35 @@ stops/starts the subscription when it changes. This replaces `Stream`,
 explicit equality function. If a real app needs streams, `purescript-event` or
 an `AVar` loop can live inside `subscribe`; the runtime does not need to know.
 
-## 8. Mounts, managed resources, ports, and host integration
+## 8. HTTP
+
+Implemented. FoldKit's `http/` is one preconfigured Effect `HttpClient` layer.
+PureScript `Aff` does not need a layer; a `Client` record is enough.
+
+```purescript
+type Client =
+  { send :: Request -> Aff (Either HttpError Response)
+  }
+
+data HttpError
+  = InvalidUrl String
+  | NetworkError String
+  | StatusError Int String String
+  | DecodeError String
+```
+
+`Request` is data: a closed `Method` ADT, a URL string, an array of headers, and
+an optional text body. `Response` is status, status text, headers, and body.
+`browserClient` wraps `ezfetch`; `pureClient` is the test seam; `guardStatus` is
+shared by both, so a fake 404 and a real 404 behave the same. `sendJson` keeps
+Argonaut in charge of decoding and maps parse/decode failures to `DecodeError`.
+See [`http.md`](./http.md).
+
+The Pokedex uses this client for the list and detail endpoints. Its commands
+return `Either HttpError value`, so `update` only sees `LoadedList`/`FailedList`
+or `LoadedPokemon`/`FailedPokemon`.
+
+## 9. Mounts, managed resources, ports, and host integration
 
 These are deferred but the data shapes are not mysterious.
 
@@ -350,7 +379,7 @@ FoldKit's generated picker object does. Canvas is a pure display list
 (`Shape -> Array CanvasCommand`) plus a thin FFI painter; the current FoldKit
 code already separates geometry from the `CanvasRenderingContext2D` calls.
 
-## 9. Pure domain libraries
+## 10. Pure domain libraries
 
 - `AsyncData` is implemented in `Foldkit.AsyncData` with the six states
   (`Idle`, `Loading`, `Success`, `Failure`, `Refreshing`, `Stale`). `map`,
@@ -366,7 +395,7 @@ code already separates geometry from the `CanvasRenderingContext2D` calls.
 - `DevTools` is deferred. `Show`/`Generic` replace Schema summarization. A
   history store is a `Ref (Array (Tuple Message model))` plus a pure diff.
 
-## 10. Story and Scene
+## 11. Story and Scene
 
 This is the point of the project, so it gets its own document:
 [`scene-design.md`](./scene-design.md). The short version:
@@ -389,7 +418,7 @@ This is the point of the project, so it gets its own document:
   ran but produced no message" is unrepresentable. FoldKit's `expectIgnored` and
   `expectHandled` have no counterpart because the state cannot occur.
 
-## 11. TypeScript workarounds deleted
+## 12. TypeScript workarounds deleted
 
 | FoldKit / TypeScript | Iris / PureScript |
 | --- | --- |
@@ -409,7 +438,7 @@ This is the point of the project, so it gets its own document:
 | `Schema`-based DevTools summaries | `Show` / `Generic` |
 | `Struct.modifyFields` | record update syntax |
 
-## 12. What is intentionally not here
+## 13. What is intentionally not here
 
 - A keyed VDOM differ, focus/scroll preservation, or hydration.
 - Command interruption and keyed in-flight work.

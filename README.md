@@ -1,15 +1,16 @@
 # iris-foldkit
 
 FoldKit's Elm architecture and Story/Scene testing for PureScript, compiled with
-Iris.
+Iris. The demo is a working Pokédex that fetches the first 151 Pokémon from
+[PokéAPI](https://pokeapi.co).
 
-This is a working vertical slice, not a wrapper around the npm package. The
-program model, commands, pure view tree, Submodel fold, AsyncData, Story, Scene,
-accessible queries, server rendering, and a minimal browser runtime are all
-implemented in PureScript. The test suite is the part that matters most.
+This is an implementation, not a wrapper around the npm package. The program
+model, commands, pure view tree, Submodel fold, AsyncData, typed HTTP client,
+Story, Scene, accessible queries, server rendering, browser runtime, and Vite
+development setup are all here. The test suite is the part that matters most.
 
 ```text
-26 passed, 0 failed.
+33 passed, 0 failed.
 ```
 
 ## Quick start
@@ -17,10 +18,23 @@ implemented in PureScript. The test suite is the part that matters most.
 Requirements: Iris 0.1.13, Node 22 or newer, Spago 1.0.4.
 
 ```sh
-./scripts/check.sh   # format check, build, test, run
+npm install
+npm run dev
 ```
 
-Or run the steps directly:
+Open <http://localhost:5173>. `npm run dev` runs `iris watch` and Vite together.
+A PureScript edit rebuilds the output; Vite updates the page. The search input
+keeps focus across the full re-render.
+
+Other commands:
+
+```sh
+./scripts/check.sh   # format check, build, test, and run
+npm run build        # production build into dist/
+npm run smoke        # headless browser: list, search focus, filter, detail
+```
+
+Or run the PureScript steps directly:
 
 ```sh
 iris format --check
@@ -29,8 +43,60 @@ iris test
 iris run
 ```
 
-`iris run` prints the counter and weather views as HTML. In a browser bundle,
-`Main.main` starts the weather app in `#root` instead.
+`iris run` prints the server-rendered Pokédex shell. In a browser bundle,
+`Main.main` starts the Pokédex in `#root` instead.
+
+## The Pokédex
+
+The example is a real app, not a fixture:
+
+- `Example.Pokedex.start` loads `https://pokeapi.co/api/v2/pokemon?limit=151`
+  through a command.
+- The list is filtered client-side by name.
+- Selecting a card runs `FetchPokemonDetail` against the PokéAPI detail endpoint.
+- The detail panel shows sprite, types, height, weight, and base stats.
+- Loading, failure, refresh, and success are modeled with `AsyncData`.
+- The browser smoke test verifies the live page, not just the pure interpreter.
+
+## Typed HTTP
+
+`Foldkit.Http` is a small, typed client over
+[`ezfetch`](https://github.com/purescript-web/purescript-ezfetch), which is a
+PureScript `Aff` API over the platform fetch implementation. Application code
+does not call a raw JS `fetch` foreign import.
+
+```purescript
+type Request =
+  { method :: Method
+  , url :: String
+  , headers :: Array (Tuple String String)
+  , body :: Maybe String
+  }
+
+type Response =
+  { status :: Int
+  , statusText :: String
+  , headers :: Map String String
+  , body :: String
+  }
+
+data HttpError
+  = InvalidUrl String
+  | NetworkError String
+  | StatusError Int String String
+  | DecodeError String
+
+type Client =
+  { send :: Request -> Aff (Either HttpError Response)
+  }
+```
+
+`Client` is a record, so tests inject `pureClient` and commands resolve without a
+network. `browserClient` maps `ezfetch` responses into the same error ADT.
+`sendJson` parses and decodes with Argonaut. `guardStatus` is shared by both
+clients, so a fake 404 behaves like a real 404.
+
+See [docs/http.md](docs/http.md).
 
 ## The architecture
 
@@ -61,31 +127,34 @@ runner. A definition owns the result-to-message lift:
 ```purescript
 data Definition args result message = Definition
   { name :: CommandName
+  , renderArgs :: args -> String
   , run :: args -> Aff result
   , lift :: result -> message
   }
 ```
 
-Tests resolve the raw result; they never run the command.
+Tests resolve the raw result; they never run the command. `start` is also
+effectful: the runtime renders the initial model and then runs the commands it
+returned.
 
 ## Story and Scene
 
 A Story test drives `update` and asserts on the model:
 
 ```purescript
-Story.runStory Weather.update Weather.initialModel do
-  Story.send (Weather.UpdatedZipCode "90210")
-  Story.send Weather.SubmittedWeatherForm
-  Story.expectModel "weather is loading" \model ->
-    isPending model.weather
+Story.runStory Pokedex.update Pokedex.initialModel do
+  Story.send (Pokedex.LoadedList summaries)
+  Story.expectModel "the list is loaded" \model ->
+    case model.list of
+      Success values -> Array.length values == 2
+      _ -> false
+  Story.send (Pokedex.SelectedPokemon "charmander")
   Story.expectCommands
-    [ Command.byDefinition Weather.fetchWeather ]
-  Story.resolve
-    Weather.fetchWeather
-    (Weather.FetchWeatherSucceeded (Weather.sampleWeather "90210"))
-  Story.expectModel "weather is a success" \model ->
-    case model.weather of
-      Success weather -> weather.temperature == 72
+    [ Command.byDefinition Pokedex.fetchPokemonDetail ]
+  Story.resolve Pokedex.fetchPokemonDetail (Right samplePokemon)
+  Story.expectModel "the detail is loaded" \model ->
+    case model.detail of
+      Success pokemon -> pokemon.name == "charmander"
       _ -> false
   Story.expectNone
 ```
@@ -93,24 +162,18 @@ Story.runStory Weather.update Weather.initialModel do
 A Scene test drives the rendered `Html` tree:
 
 ```purescript
-Scene.runScene Weather.update Weather.view Weather.initialModel do
-  Scene.expectExists (Query.label "Zip code")
-  Scene.typeText (Query.label "Zip code") "90210"
-  Scene.submit (Query.role "form")
-  Scene.expectExists (Query.namedRole "button" "Loading...")
+Scene.runScene Pokedex.update Pokedex.view loadedModel do
+  Scene.expectText (Query.text "Bulbasaur") "Bulbasaur"
+  Scene.typeText (Query.label "Search Pokémon") "char"
+  Scene.expectText (Query.text "Charmander") "Charmander"
+  Scene.expectAbsent (Query.text "Bulbasaur")
+  Scene.click (Query.namedRole "button" "Charmander")
   Scene.expectCommands
-    [ Command.byInstance
-        (Command.command Weather.fetchWeather { zipCode: "90210" })
-    ]
-  Scene.resolve
-    Weather.fetchWeather
-    (Weather.FetchWeatherSucceeded (Weather.sampleWeather "90210"))
-  Scene.within (Query.role "article") do
-    Scene.expectExists (Query.namedRole "heading" "90210")
-    Scene.expectText
-      (Query.text "Beverly Hills, California")
-      "Beverly Hills, California"
-    Scene.expectText (Query.text "72°F") "72°F"
+    [ Command.byDefinition Pokedex.fetchPokemonDetail ]
+  Scene.resolve Pokedex.fetchPokemonDetail (Right samplePokemon)
+  Scene.expectText (Query.namedRole "heading" "Charmander") "Charmander"
+  Scene.expectTextContaining (Query.role "article") "Fire"
+  Scene.expectNone
 ```
 
 There is no DOM and no happy-dom. `Html message` is a pure functor; an `OnClick`
@@ -135,9 +198,9 @@ message and again at the end of the run.
 - **One state shape for both runners.** Scene keeps only its locator scope in the
   reader; commands, model, and OutMessage live in the same `Simulation.State` as
   Story. The command and assertion rules cannot drift.
+- **Typed effects at the edge.** Commands are `Aff` values with typed results.
+  HTTP is a `Client` record with a typed error ADT, not an untyped JS callback.
 - **Pure server rendering.** `renderToString` is a fold over the same view tree.
-- **Effects only at the edge.** `Aff` is in command runners and the browser
-  runtime. The test interpreter and the renderer are pure.
 
 ## Layout
 
@@ -151,31 +214,35 @@ src/Foldkit/Story.purs         model-level interpreter
 src/Foldkit/Scene.purs         view-level interpreter
 src/Foldkit/Submodel.purs      parent/child fold and OutMessage
 src/Foldkit/AsyncData.purs     remote data ADT
+src/Foldkit/Http.purs          typed Client over ezfetch
 src/Foldkit/Render.purs        Html -> String
-src/Foldkit/Runtime.purs       minimal browser runtime (full re-render)
+src/Foldkit/Runtime.purs       browser runtime (full re-render + focus restore)
 src/Foldkit/Test.purs          small Aff test runner
+src/Example/Pokedex.purs       the real PokéAPI app
+src/Example/Pokedex/Browser.purs
 src/Example/Counter.purs       counter with an OutMessage at ten
 src/Example/Parent.purs        Submodel composition
 src/Example/Weather.purs       async form with a typed command result
-src/Example/Browser.purs       browser entry
-test/Test/**                   Story, Scene, command, and render tests
+web/main.js                    Vite entry
+web/styles.css                 Pokédex styles
+test/Test/**                   Story, Scene, HTTP, command, and Pokedex tests
 ```
 
 ## Status
 
 Implemented:
 
-- Program/Update/Command with result-typed definitions.
+- Program/Update/Command with result-typed definitions and initial commands.
 - Pure `Html` with typed events and a `Functor` instance.
 - Story and Scene interpreters with pending-command discipline.
 - Definition and instance matchers, exact multiset and subset assertions,
-  ambiguity errors, `resolveExact`.
-- Accessible locators for role/name, label, text, placeholder, alt text, title,
-  test id, display value; `within`, `first`, `last`, `nth`; text/value/disabled/
-  enabled/checked/attribute/accessible-name/count assertions.
+  ambiguity errors, `resolveExact`, and `Scene.send`.
+- Accessible locators and assertions, including name and description.
 - Click, type, submit, keydown, check; submit-button fallback to the form.
 - Submodel fold and OutMessage with a parent example.
-- AsyncData, `renderToString`, and a minimal full-re-render browser runtime.
+- AsyncData, typed HTTP with a testable `Client`, `renderToString`, and a minimal
+  full-re-render browser runtime with focus restoration.
+- Pokédex app, Vite dev server, hot reload, and a headless browser smoke test.
 - A small test runner run by `iris test`.
 
 Deferred with a design in
@@ -187,6 +254,7 @@ elements, canvas, field validation, calendar, and DevTools.
 
 - [FoldKit → Iris module map](docs/foldkit-to-iris.md)
 - [Story and Scene design](docs/scene-design.md)
+- [Typed HTTP](docs/http.md)
 - [Idiomatic PureScript standard](docs/idiomatic-purescript.md)
 - [Iris setup and workflow](docs/iris-setup.md)
 - [Decision trail](docs/decision-trail.tsv)

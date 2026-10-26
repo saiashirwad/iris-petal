@@ -50,6 +50,11 @@ modules directly (`Control.Monad.Reader`, `Control.Monad.State`,
 `Control.Monad.Except`, `Control.Monad.Error.Class`), which live in
 `transformers`.
 
+`ezfetch` supplies the typed `Aff` HTTP transport used by `Foldkit.Http`.
+`argonaut-core`/`argonaut-codecs` decode the PokéAPI payloads.
+`ordered-collections` supplies response headers and `url-immutable` parses
+request URLs.
+
 ## Build, test, run
 
 ```sh
@@ -72,9 +77,44 @@ non-zero exit code when anything fails.
 
 It runs `iris format --check`, `iris build`, `iris test`, and `iris run`.
 
-`iris run` prints the server-rendered counter and weather views. `Main.main`
-checks whether `document` exists. In a browser bundle it starts the weather
-runtime in `#root`; in Node it stays on the SSR path.
+`iris run` prints the server-rendered Pokédex shell. `Main.main` checks whether
+`document` exists. In a browser bundle it starts the Pokédex runtime in `#root`;
+in Node it stays on the SSR path.
+
+## Dev server and hot reload
+
+Install the JavaScript tooling once:
+
+```sh
+npm install
+```
+
+Start the live development loop:
+
+```sh
+npm run dev
+```
+
+`scripts/dev.sh` starts `iris watch` in the background and Vite in the
+foreground. Iris rebuilds `output/` on a PureScript edit; Vite watches the
+compiled modules and updates the page. The Pokédex is at
+<http://localhost:5173/>.
+
+Production build:
+
+```sh
+npm run build
+```
+
+The browser smoke test needs the dev server to be running:
+
+```sh
+npm run smoke
+```
+
+It opens Chromium, waits for the real PokéAPI list, types in the search box,
+checks that focus survives the re-render, checks the filter, clicks a card, and
+waits for the detail panel.
 
 ## Build graph
 

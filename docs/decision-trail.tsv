@@ -17,8 +17,15 @@ D15	design	Browser runtime is a full re-render, not a keyed VDOM differ	Port Sna
 V01	verify	iris build succeeds	none	src/Main.purs imports; output/Main/index.js	verified
 V02	verify	First Story/Scene suite passes 18/18	none	iris test output before command matcher work	verified
 V03	review	Cross-model review returned ADOPT WITH CHANGES	none	Reviewer: result-typed definitions, definition matchers, Scene.send, shared actions	verified
-V04	verify	Command guarantee suite passes 26/26	none	iris test output: 26 passed, 0 failed	test/Test/Command.purs; test/Test/Accessibility.purs; test/Test/**	verified
+V04	verify	Full suite passes 33/33	none	iris test output: 33 passed, 0 failed	test/Test/Command.purs; test/Test/Accessibility.purs; test/Test/**	verified
 V05	verify	Iris 0.1.13 nested case bug in Story.runStory	none	UnreportedUnknownType then successful build with maybe	observed; workaround committed
 V06	verify	Cross-model judge session was unavailable with Unauthorized on first attempt	Retry succeeded with poteto-reviewer	Reviewer report in session	observed; retry verified
 V07	docs	README, Scene design, module map, idempotent style standard, Iris setup, decision trail	none	docs/*.md; README.md	accepted
-V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 26 passed, 0 failed	verified
+V08	verify	One-command gate runs format check, build, test, and run	none	scripts/check.sh; 33 passed, 0 failed	verified
+D16	design	Use a typed Client record over ezfetch for HTTP, not a raw JS fetch FFI	Raw fetch FFI; affjax; fetch; custom XMLHttpRequest	Foldkit.Http; docs/http.md; example Pokedex	accepted
+D17	design	Serve the Pokedex with Vite while iris watch rebuilds output	iris watch only; webpack; esbuild; a custom dev server	package.json; vite.config.js; scripts/dev.sh	accepted
+D18	design	Preserve focused element id/selection across the full re-render	Build a VDOM differ now; use uncontrolled inputs	Foldkit.Runtime captureFocus/restoreFocus; npm run smoke	accepted as slice
+V09	verify	Full suite passes 33/33 after Pokedex and HTTP	none	iris test output: 33 passed, 0 failed	test/Test/Pokedex.purs; test/Test/Http.purs; test/Test/**	verified
+V10	verify	HMR updates a live page after a PureScript edit	Vite full reload only; no watcher	Playwright watched the h1 change from a source edit; iris watch rebuilt output	scripts/dev.sh; HMR smoke run	verified
+V11	verify	Real PokéAPI list fetch and Argonaut decode returns 151 entries	Mock only	iris run --main Example.PokedexSmoke printed OK 151 Pokémon	Temporary smoke module	verified
+V12	verify	Browser smoke: list, focus survives search, filter, detail panel	Pure tests only	npm run smoke printed Pokedex smoke passed	scripts/smoke-pokedex.mjs	verified
