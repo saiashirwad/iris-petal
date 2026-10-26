@@ -13,7 +13,6 @@ module Foldkit.Query
   , title
   , testId
   , displayValue
-  , selector
   , within
   , first
   , last
@@ -25,10 +24,15 @@ module Foldkit.Query
   , findRef
   , targetHtml
   , targetTag
-  , eventHandler
-  , findHandler
+  , findClickHandler
+  , findInputHandler
+  , findChangeHandler
+  , findCheckHandler
+  , findKeyDownHandler
   , findSubmitHandler
   , isSubmitButton
+  , isDisabled
+  , isChecked
   , textContent
   , normalizeWhitespace
   , attributeValue
@@ -37,33 +41,25 @@ module Foldkit.Query
   , classList
   , accessibleName
   , accessibleDescription
-  ) where
+  )
+  where
 
 import Prelude
 
+import Control.Alt ((<|>))
 import Data.Array as Array
 import Data.Foldable (all, any, elem, intercalate)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.String as Str
-import Data.String.CodeUnits as StringCode
 import Data.Tuple (Tuple(..))
-import Foldkit.Html (Attribute(..), Event, Html(..))
+import Foldkit.Html (Attribute(..), Html(..), KeyEvent)
 import Foldkit.Html as Html
 
 type RoleOptions =
-  { name :: Maybe String
-  , level :: Maybe Int
-  , disabled :: Maybe Boolean
-  , checked :: Maybe Boolean
-  }
+  { name :: Maybe String, level :: Maybe Int, disabled :: Maybe Boolean, checked :: Maybe Boolean }
 
 defaultRoleOptions :: RoleOptions
-defaultRoleOptions =
-  { name: Nothing
-  , level: Nothing
-  , disabled: Nothing
-  , checked: Nothing
-  }
+defaultRoleOptions = { name: Nothing, level: Nothing, disabled: Nothing, checked: Nothing }
 
 data Locator
   = ByRole String RoleOptions
@@ -74,7 +70,6 @@ data Locator
   | ByTitle String
   | ByTestId String
   | ByDisplayValue String
-  | BySelector String
   | Within Locator Locator
   | First Locator
   | Last Locator
@@ -113,9 +108,6 @@ testId = ByTestId
 displayValue :: String -> Locator
 displayValue = ByDisplayValue
 
-selector :: String -> Locator
-selector = BySelector
-
 within :: Locator -> Locator -> Locator
 within parent child = Within parent child
 
@@ -130,12 +122,12 @@ nth = Nth
 
 describe :: Locator -> String
 describe = case _ of
-  ByRole value options ->
-    "role " <> value
-      <> ( case options.name of
-            Nothing -> ""
-            Just nameValue -> " named \"" <> nameValue <> "\""
-        )
+  ByRole value options -> "role "
+    <> value
+    <> ( case options.name of
+           Nothing -> ""
+           Just nameValue -> " named \"" <> nameValue <> "\""
+       )
   ByLabel value -> "label \"" <> value <> "\""
   ByText value true -> "text \"" <> value <> "\""
   ByText value false -> "text containing \"" <> value <> "\""
@@ -144,80 +136,53 @@ describe = case _ of
   ByTitle value -> "title \"" <> value <> "\""
   ByTestId value -> "test id \"" <> value <> "\""
   ByDisplayValue value -> "display value \"" <> value <> "\""
-  BySelector value -> "selector \"" <> value <> "\""
   Within parent child -> describe child <> " within " <> describe parent
   First value -> "first " <> describe value
   Last value -> "last " <> describe value
   Nth index value -> "index " <> show index <> " of " <> describe value
 
 type NodeRef message =
-  { path :: Array Int
-  , element :: Html.Element message
-  , ancestors :: Array (Html.Element message)
-  }
+  { path :: Array Int, element :: Html.Element message, ancestors :: Array (Html.Element message) }
 
 refs :: forall message. Html message -> Array (NodeRef message)
 refs = go [] []
   where
   go path ancestors node = case node of
-    Element element ->
-      [ { path, element, ancestors } ]
-        <> Array.concatMap
-            ( \(Tuple index child) ->
-                go (path <> [ index ]) (ancestors <> [ element ]) child
-            )
-            (Array.mapWithIndex Tuple element.children)
+    Element element -> [ { path, element, ancestors } ]
+      <> Array.concatMap
+           (\(Tuple index child) -> go (path <> [ index ]) (ancestors <> [ element ]) child)
+           (Array.mapWithIndex Tuple element.children)
     Fragment children ->
-      Array.concatMap
-        ( \(Tuple index child) -> go (path <> [ index ]) ancestors child
-        )
+      Array.concatMap (\(Tuple index child) -> go (path <> [ index ]) ancestors child)
         (Array.mapWithIndex Tuple children)
     _ -> []
 
 isPrefix :: Array Int -> Array Int -> Boolean
 isPrefix prefix value =
-  Array.length prefix <= Array.length value
-    && Array.take (Array.length prefix) value == prefix
+  Array.length prefix <= Array.length value && Array.take (Array.length prefix) value == prefix
 
 deepest :: forall message. Array (NodeRef message) -> Array (NodeRef message)
-deepest candidates =
-  Array.filter
-    ( \candidate ->
-        not
-          ( any
-              ( \other ->
-                  candidate.path /= other.path
-                    && isPrefix candidate.path other.path
-              )
-              candidates
-          )
-    )
-    candidates
+deepest candidates = Array.filter
+  ( \candidate -> not
+      ( any (\other -> candidate.path /= other.path && isPrefix candidate.path other.path)
+          candidates
+      )
+  )
+  candidates
 
 refsFor :: forall message. Locator -> Html message -> Array (NodeRef message)
 refsFor locator root = case locator of
-  ByRole value options ->
-    Array.filter (matchesRole value options root) (refs root)
-  ByLabel value ->
-    Array.filter (matchesLabel value root) (refs root)
-  ByText value exact ->
-    deepest (Array.filter (matchesText value exact) (refs root))
-  ByPlaceholder value ->
-    Array.filter (matchesAttribute "placeholder" value) (refs root)
-  ByAltText value ->
-    Array.filter (matchesAttribute "alt" value) (refs root)
-  ByTitle value ->
-    Array.filter (matchesAttribute "title" value) (refs root)
-  ByTestId value ->
-    Array.filter (matchesAttribute "data-testid" value) (refs root)
-  ByDisplayValue value ->
-    Array.filter (matchesDisplayValue value) (refs root)
-  BySelector value ->
-    Array.filter (matchesSelector value) (refs root)
-  Within parent child ->
-    case Array.head (refsFor parent root) of
-      Nothing -> []
-      Just parentRef -> refsFor child (Element parentRef.element)
+  ByRole value options -> Array.filter (matchesRole value options root) (refs root)
+  ByLabel value -> Array.filter (matchesLabel value root) (refs root)
+  ByText value exact -> deepest (Array.filter (matchesText value exact) (refs root))
+  ByPlaceholder value -> Array.filter (matchesAttribute "placeholder" value) (refs root)
+  ByAltText value -> Array.filter (matchesAttribute "alt" value) (refs root)
+  ByTitle value -> Array.filter (matchesAttribute "title" value) (refs root)
+  ByTestId value -> Array.filter (matchesAttribute "data-testid" value) (refs root)
+  ByDisplayValue value -> Array.filter (matchesDisplayValue value) (refs root)
+  Within parent child -> case Array.head (refsFor parent root) of
+    Nothing -> []
+    Just parentRef -> refsFor child (Element parentRef.element)
   First value -> Array.take 1 (refsFor value root)
   Last value -> case Array.last (refsFor value root) of
     Nothing -> []
@@ -235,35 +200,54 @@ targetHtml ref = Element ref.element
 targetTag :: forall message. NodeRef message -> String
 targetTag ref = ref.element.tag
 
-eventHandler :: forall message. String -> Html message -> Maybe (Event -> message)
-eventHandler eventName = case _ of
-  Element element ->
-    Array.findMap
-      ( case _ of
-          Event name handler
-            | name == eventName -> Just handler
-          _ -> Nothing
-      )
-      element.attributes
+handlerOn :: forall message value. (Attribute message -> Maybe value) -> Html message -> Maybe value
+handlerOn extract = case _ of
+  Element element -> Array.findMap extract element.attributes
   _ -> Nothing
 
-findHandler :: forall message. String -> NodeRef message -> Maybe (Event -> message)
-findHandler eventName ref =
-  case eventHandler eventName (Element ref.element) of
-    Just handler -> Just handler
-    Nothing ->
-      Array.findMap
-        (eventHandler eventName <<< Element)
-        (Array.reverse ref.ancestors)
+findInPath ::
+  forall message value. (Attribute message -> Maybe value) -> NodeRef message -> Maybe value
+findInPath extract ref = case handlerOn extract (targetHtml ref) of
+  Just value -> Just value
+  Nothing -> Array.findMap (handlerOn extract <<< Element) (Array.reverse ref.ancestors)
 
-findSubmitHandler :: forall message. NodeRef message -> Maybe (Event -> message)
-findSubmitHandler ref =
-  Array.findMap
-    ( \ancestor ->
-        if ancestor.tag == "form" then eventHandler "submit" (Element ancestor)
-        else Nothing
-    )
-    (Array.reverse ref.ancestors)
+findClickHandler :: forall message. NodeRef message -> Maybe message
+findClickHandler = findInPath case _ of
+  OnClick message -> Just message
+  _ -> Nothing
+
+findInputHandler :: forall message. NodeRef message -> Maybe (String -> message)
+findInputHandler = findInPath case _ of
+  OnInput handler -> Just handler
+  _ -> Nothing
+
+findChangeHandler :: forall message. NodeRef message -> Maybe (String -> message)
+findChangeHandler = findInPath case _ of
+  OnChange handler -> Just handler
+  _ -> Nothing
+
+findCheckHandler :: forall message. NodeRef message -> Maybe (Boolean -> message)
+findCheckHandler = findInPath case _ of
+  OnCheck handler -> Just handler
+  _ -> Nothing
+
+findKeyDownHandler :: forall message. NodeRef message -> Maybe (KeyEvent -> message)
+findKeyDownHandler = findInPath case _ of
+  OnKeyDown handler -> Just handler
+  _ -> Nothing
+
+findSubmitHandler :: forall message. NodeRef message -> Maybe message
+findSubmitHandler ref = case formHandler (targetHtml ref) of
+  Just message -> Just message
+  Nothing -> Array.findMap (formHandler <<< Element) (Array.reverse ref.ancestors)
+  where
+  formHandler = case _ of
+    Element element
+      | element.tag == "form" -> handlerOn submitHandler (Element element)
+    _ -> Nothing
+  submitHandler = case _ of
+    OnSubmit message -> Just message
+    _ -> Nothing
 
 isSubmitButton :: forall message. NodeRef message -> Boolean
 isSubmitButton ref =
@@ -271,12 +255,10 @@ isSubmitButton ref =
 
 isSubmitButtonElement :: forall message. Html.Element message -> Boolean
 isSubmitButtonElement element = case element.tag of
-  "button" ->
-    case Str.toLower (fromMaybe "submit" (lookupAttribute "type" element.attributes)) of
-      "submit" -> true
-      _ -> false
-  "input" ->
-    Str.toLower (fromMaybe "" (lookupAttribute "type" element.attributes)) == "submit"
+  "button" -> case Str.toLower (fromMaybe "submit" (lookupAttribute "type" element.attributes)) of
+    "submit" -> true
+    _ -> false
+  "input" -> Str.toLower (fromMaybe "" (lookupAttribute "type" element.attributes)) == "submit"
   _ -> false
 
 find :: forall message. Locator -> Html message -> Maybe (Html message)
@@ -308,52 +290,42 @@ booleanAttribute key = case _ of
   _ -> Nothing
 
 classList :: forall message. Html message -> Array String
-classList html =
-  Array.filter (not <<< Str.null)
-    (Str.split (Str.Pattern " ") (fromMaybe "" (attributeValue "class" html)))
+classList html = Array.filter (not <<< Str.null)
+  (Str.split (Str.Pattern " ") (fromMaybe "" (attributeValue "class" html)))
 
 lookupAttribute :: forall message. String -> Array (Attribute message) -> Maybe String
-lookupAttribute key =
-  Array.findMap case _ of
-    Attribute name value
-      | name == key -> Just value
-    Property name value
-      | name == key -> Just value
-    BooleanAttribute name true
-      | name == key -> Just "true"
-    _ -> Nothing
+lookupAttribute key = Array.findMap case _ of
+  Attribute name value
+    | name == key -> Just value
+  BooleanAttribute name true
+    | name == key -> Just "true"
+  _ -> Nothing
 
 hasAttributeElement :: forall message. String -> Html.Element message -> Boolean
 hasAttributeElement key element =
-  isJust (lookupAttribute key element.attributes)
-    || isJust (booleanAttributeElement key element)
+  isJust (lookupAttribute key element.attributes) || isJust (booleanAttributeElement key element)
 
 booleanAttributeElement :: forall message. String -> Html.Element message -> Maybe Boolean
-booleanAttributeElement key element =
-  Array.findMap
-    ( case _ of
-        BooleanAttribute name value
-          | name == key -> Just value
-        _ -> Nothing
-    )
-    element.attributes
+booleanAttributeElement key element = Array.findMap
+  ( case _ of
+      BooleanAttribute name value
+        | name == key -> Just value
+      _ -> Nothing
+  )
+  element.attributes
 
 normalizeWhitespace :: String -> String
-normalizeWhitespace value =
-  Str.trim
-    ( intercalate " "
-        ( Array.filter (not <<< Str.null)
-            ( Array.foldl
-                ( \chunks pattern ->
-                    Array.concatMap
-                      (\chunk -> Str.split (Str.Pattern pattern) chunk)
-                      chunks
-                )
-                [ value ]
-                [ " ", "\n", "\t", "\r" ]
-            )
-        )
-    )
+normalizeWhitespace value = Str.trim
+  ( intercalate " "
+      ( Array.filter (not <<< Str.null)
+          ( Array.foldl
+              ( \chunks pattern ->
+                  Array.concatMap (\chunk -> Str.split (Str.Pattern pattern) chunk) chunks
+              )
+              [ value ] [ " ", "\n", "\t", "\r" ]
+          )
+      )
+  )
 
 matchesText :: forall message. String -> Boolean -> NodeRef message -> Boolean
 matchesText target exact ref =
@@ -361,43 +333,44 @@ matchesText target exact ref =
     actual = normalizeWhitespace (textContent (Element ref.element))
     expected = normalizeWhitespace target
   in
-    if exact then actual == expected
-    else Str.contains (Str.Pattern expected) actual
+    if exact then actual == expected else Str.contains (Str.Pattern expected) actual
 
 matchesAttribute :: forall message. String -> String -> NodeRef message -> Boolean
-matchesAttribute key target ref =
-  lookupAttribute key ref.element.attributes == Just target
+matchesAttribute key target ref = lookupAttribute key ref.element.attributes == Just target
 
 matchesDisplayValue :: forall message. String -> NodeRef message -> Boolean
 matchesDisplayValue target ref =
-  isFormControl ref.element
-    && lookupAttribute "value" ref.element.attributes == Just target
+  isFormControl ref.element && lookupAttribute "value" ref.element.attributes == Just target
 
 isFormControl :: forall message. Html.Element message -> Boolean
 isFormControl element = element.tag `elem` [ "input", "textarea", "select" ]
 
+isDisabled :: forall message. Html.Element message -> Boolean
+isDisabled element = booleanAttributeElement "disabled" element
+  == Just true
+  || lookupAttribute "aria-disabled" element.attributes
+  == Just "true"
+
+isChecked :: forall message. Html.Element message -> Boolean
+isChecked element = booleanAttributeElement "checked" element
+  == Just true
+  || lookupAttribute "aria-checked" element.attributes
+  == Just "true"
+
 isLabelable :: forall message. Html.Element message -> Boolean
 isLabelable element =
-  element.tag `elem`
-    [ "button", "input", "meter", "output", "progress", "select", "textarea" ]
+  element.tag `elem` [ "button", "input", "meter", "output", "progress", "select", "textarea" ]
 
 hasAriaLabel :: forall message. Html.Element message -> Boolean
-hasAriaLabel element =
-  isJust (lookupAttribute "aria-label" element.attributes)
-    || isJust (lookupAttribute "aria-labelledby" element.attributes)
+hasAriaLabel element = isJust (lookupAttribute "aria-label" element.attributes)
+  || isJust (lookupAttribute "aria-labelledby" element.attributes)
 
 matchesLabel :: forall message. String -> Html message -> NodeRef message -> Boolean
-matchesLabel target root ref =
-  (isLabelable ref.element || hasAriaLabel ref.element)
-    && normalizeWhitespace (accessibleNameElement root ref.element) == normalizeWhitespace target
+matchesLabel target root ref = (isLabelable ref.element || hasAriaLabel ref.element)
+  && normalizeWhitespace (accessibleNameElement root ref.element)
+  == normalizeWhitespace target
 
-matchesRole
-  :: forall message
-   . String
-  -> RoleOptions
-  -> Html message
-  -> NodeRef message
-  -> Boolean
+matchesRole :: forall message. String -> RoleOptions -> Html message -> NodeRef message -> Boolean
 matchesRole target options root ref =
   let
     element = ref.element
@@ -406,26 +379,15 @@ matchesRole target options root ref =
       Just value -> Str.split (Str.Pattern " ") value
       Nothing -> implicitRoles element
   in
-    target `elem` roles
-      && optionsMatch options root element
+    target `elem` roles && optionsMatch options root element
 
-optionsMatch
-  :: forall message
-   . RoleOptions
-  -> Html message
-  -> Html.Element message
-  -> Boolean
-optionsMatch options root element =
-  nameMatches
-    && levelMatches
-    && disabledMatches
-    && checkedMatches
+optionsMatch :: forall message. RoleOptions -> Html message -> Html.Element message -> Boolean
+optionsMatch options root element = nameMatches && levelMatches && disabledMatches && checkedMatches
   where
   nameMatches = case options.name of
     Nothing -> true
     Just expected ->
-      normalizeWhitespace (accessibleNameElement root element)
-        == normalizeWhitespace expected
+      normalizeWhitespace (accessibleNameElement root element) == normalizeWhitespace expected
   levelMatches = case options.level of
     Nothing -> true
     Just expected -> headingLevel element == Just expected
@@ -447,14 +409,16 @@ headingLevel element = case element.tag of
   _ -> Nothing
 
 isDisabled :: forall message. Html.Element message -> Boolean
-isDisabled element =
-  booleanAttributeElement "disabled" element == Just true
-    || lookupAttribute "aria-disabled" element.attributes == Just "true"
+isDisabled element = booleanAttributeElement "disabled" element
+  == Just true
+  || lookupAttribute "aria-disabled" element.attributes
+  == Just "true"
 
 isChecked :: forall message. Html.Element message -> Boolean
-isChecked element =
-  booleanAttributeElement "checked" element == Just true
-    || lookupAttribute "aria-checked" element.attributes == Just "true"
+isChecked element = booleanAttributeElement "checked" element
+  == Just true
+  || lookupAttribute "aria-checked" element.attributes
+  == Just "true"
 
 implicitRoles :: forall message. Html.Element message -> Array String
 implicitRoles element = case element.tag of
@@ -475,8 +439,7 @@ implicitRoles element = case element.tag of
   "h6" -> [ "heading" ]
   "header" -> [ "banner" ]
   "hr" -> [ "separator" ]
-  "img" ->
-    if isJust (lookupAttribute "alt" element.attributes) then [ "img" ] else []
+  "img" -> if isJust (lookupAttribute "alt" element.attributes) then [ "img" ] else []
   "input" -> case Str.toLower (fromMaybe "text" (lookupAttribute "type" element.attributes)) of
     "button" -> [ "button" ]
     "checkbox" -> [ "checkbox" ]
@@ -505,8 +468,7 @@ implicitRoles element = case element.tag of
       || isJust (lookupAttribute "aria-labelledby" element.attributes)
     then [ "region" ]
     else []
-  "select" ->
-    if hasAttributeElement "multiple" element then [ "listbox" ] else [ "combobox" ]
+  "select" -> if hasAttributeElement "multiple" element then [ "listbox" ] else [ "combobox" ]
   "summary" -> [ "button" ]
   "table" -> [ "table" ]
   "tbody" -> [ "rowgroup" ]
@@ -524,27 +486,19 @@ accessibleName root = case _ of
   _ -> ""
 
 accessibleNameElement :: forall message. Html message -> Html.Element message -> String
-accessibleNameElement root element =
-  fromMaybe ""
-    ( firstJust
-        [ nameFromLabelledBy root element
-        , nameFromAriaLabel element
-        , nameFromLabelFor root element
-        , nameFromNative element
-        , nameFromContent element
-        , nameFromTitle element
-        ]
-    )
+accessibleNameElement root element = fromMaybe ""
+  $ nameFromLabelledBy root element
+  <|> nameFromAriaLabel element
+  <|> nameFromLabelFor root element
+  <|> nameFromNative element
+  <|> nameFromContent element
+  <|> nameFromTitle element
 
 accessibleDescription :: forall message. Html message -> Html message -> String
 accessibleDescription root = case _ of
-  Element element ->
-    fromMaybe ""
-      ( firstJust
-          [ nameFromDescribedBy root element
-          , lookupAttribute "aria-description" element.attributes
-          ]
-      )
+  Element element -> fromMaybe ""
+    $ nameFromDescribedBy root element
+    <|> lookupAttribute "aria-description" element.attributes
   _ -> ""
 
 nameFromLabelledBy :: forall message. Html message -> Html.Element message -> Maybe String
@@ -552,8 +506,7 @@ nameFromLabelledBy root element = do
   ids <- lookupAttribute "aria-labelledby" element.attributes
   let
     names = Array.mapMaybe (findTextById root) (Str.split (Str.Pattern " ") ids)
-  if Array.null names then Nothing
-  else Just (intercalate " " (map normalizeWhitespace names))
+  if Array.null names then Nothing else Just (intercalate " " (map normalizeWhitespace names))
 
 nameFromAriaLabel :: forall message. Html.Element message -> Maybe String
 nameFromAriaLabel element = do
@@ -568,41 +521,41 @@ nameFromLabelFor root element = do
 nameFromNative :: forall message. Html.Element message -> Maybe String
 nameFromNative element = case element.tag of
   "img" -> lookupAttribute "alt" element.attributes
-  "input" ->
-    case Str.toLower (fromMaybe "text" (lookupAttribute "type" element.attributes)) of
-      "submit" -> lookupAttribute "value" element.attributes
-      "button" -> lookupAttribute "value" element.attributes
-      "reset" -> lookupAttribute "value" element.attributes
-      "image" -> lookupAttribute "alt" element.attributes
-      _ -> Nothing
+  "input" -> case Str.toLower (fromMaybe "text" (lookupAttribute "type" element.attributes)) of
+    "submit" -> lookupAttribute "value" element.attributes
+    "button" -> lookupAttribute "value" element.attributes
+    "reset" -> lookupAttribute "value" element.attributes
+    "image" -> lookupAttribute "alt" element.attributes
+    _ -> Nothing
   _ -> Nothing
 
 nameFromContent :: forall message. Html.Element message -> Maybe String
 nameFromContent element =
-  if canNameFromContent element then
-    let value = normalizeWhitespace (textContent (Element element))
-    in if Str.null value then Nothing else Just value
+  if canNameFromContent element
+  then
+    let
+      value = normalizeWhitespace (textContent (Element element))
+    in
+      if Str.null value then Nothing else Just value
   else Nothing
 
 canNameFromContent :: forall message. Html.Element message -> Boolean
 canNameFromContent element =
-  element.tag `elem`
-    [ "a", "button", "h1", "h2", "h3", "h4", "h5", "h6", "option", "summary" ]
+  element.tag `elem` [ "a", "button", "h1", "h2", "h3", "h4", "h5", "h6", "option", "summary" ]
     || case lookupAttribute "role" element.attributes of
       Nothing -> false
-      Just roleValue ->
-        roleValue `elem`
-          [ "button"
-          , "checkbox"
-          , "heading"
-          , "link"
-          , "menuitem"
-          , "option"
-          , "radio"
-          , "switch"
-          , "tab"
-          , "treeitem"
-          ]
+      Just roleValue -> roleValue
+        `elem` [ "button"
+               , "checkbox"
+               , "heading"
+               , "link"
+               , "menuitem"
+               , "option"
+               , "radio"
+               , "switch"
+               , "tab"
+               , "treeitem"
+               ]
 
 nameFromTitle :: forall message. Html.Element message -> Maybe String
 nameFromTitle element = lookupAttribute "title" element.attributes
@@ -612,16 +565,11 @@ nameFromDescribedBy root element = do
   ids <- lookupAttribute "aria-describedby" element.attributes
   let
     names = Array.mapMaybe (findTextById root) (Str.split (Str.Pattern " ") ids)
-  if Array.null names then Nothing
-  else Just (intercalate " " (map normalizeWhitespace names))
+  if Array.null names then Nothing else Just (intercalate " " (map normalizeWhitespace names))
 
 findTextById :: forall message. Html message -> String -> Maybe String
-findTextById root id =
-  map (textContent <<< Element <<< _.element)
-    ( Array.find
-        (\ref -> lookupAttribute "id" ref.element.attributes == Just id)
-        (refs root)
-    )
+findTextById root id = map (textContent <<< Element <<< _.element)
+  (Array.find (\ref -> lookupAttribute "id" ref.element.attributes == Just id) (refs root))
 
 findLabelForId :: forall message. Html message -> String -> Maybe String
 findLabelForId root id =
@@ -631,176 +579,12 @@ findLabelForId root id =
     Array.findMap
       ( \ref ->
           let
-            isFor =
-              lookupAttribute "for" ref.element.attributes == Just id
-            containsId =
-              any
-                (\child -> lookupAttribute "id" child.element.attributes == Just id)
-                (refs (Element ref.element))
+            isFor = lookupAttribute "for" ref.element.attributes == Just id
+            containsId = any (\child -> lookupAttribute "id" child.element.attributes == Just id)
+              (refs (Element ref.element))
           in
-            if isFor || containsId then
-              Just (normalizeWhitespace (textContent (Element ref.element)))
+            if isFor || containsId
+            then Just (normalizeWhitespace (textContent (Element ref.element)))
             else Nothing
       )
       labels
-
-firstJust :: forall value. Array (Maybe value) -> Maybe value
-firstJust values = case Array.uncons values of
-  Nothing -> Nothing
-  Just { head: Just value } -> Just value
-  Just { tail } -> firstJust tail
-
-type Compound =
-  { tag :: Maybe String
-  , id :: Maybe String
-  , classes :: Array String
-  , attributes :: Array (Tuple String (Maybe (Tuple Boolean String)))
-  }
-
-emptyCompound :: Compound
-emptyCompound =
-  { tag: Nothing
-  , id: Nothing
-  , classes: []
-  , attributes: []
-  }
-
-matchesSelector :: forall message. String -> NodeRef message -> Boolean
-matchesSelector value ref =
-  case Array.unsnoc compounds of
-    Nothing -> false
-    Just { init, last: lastCompound } ->
-      matchesCompound lastCompound ref
-        && matchesAncestors (Array.reverse init) (Array.reverse ref.ancestors)
-  where
-  compounds = map parseCompound (Array.filter (not <<< Str.null) (Str.split (Str.Pattern " ") value))
-
-matchesAncestors :: forall message. Array Compound -> Array (Html.Element message) -> Boolean
-matchesAncestors compounds ancestors =
-  case Array.uncons compounds of
-    Nothing -> true
-    Just { head: compound, tail: rest } ->
-      case Array.uncons ancestors of
-        Nothing -> false
-        Just { head: ancestor, tail: remaining } ->
-          let
-            ancestorRef = { path: [], element: ancestor, ancestors: [] }
-          in
-            (matchesCompound compound ancestorRef && matchesAncestors rest remaining)
-              || matchesAncestors compounds remaining
-
-matchesCompound :: forall message. Compound -> NodeRef message -> Boolean
-matchesCompound compound ref =
-  tagMatches
-    && idMatches
-    && classesMatch
-    && attributesMatch
-  where
-  element = ref.element
-  tagMatches = case compound.tag of
-    Nothing -> true
-    Just expected -> element.tag == expected
-  idMatches = case compound.id of
-    Nothing -> true
-    Just expected -> lookupAttribute "id" element.attributes == Just expected
-  classesMatch = all (\value -> value `elem` classList (Element element)) compound.classes
-  attributesMatch = all (matchesAttributePattern element) compound.attributes
-
-matchesAttributePattern
-  :: forall message
-   . Html.Element message
-  -> Tuple String (Maybe (Tuple Boolean String))
-  -> Boolean
-matchesAttributePattern element (Tuple name pattern) = case pattern of
-  Nothing -> hasAttributeElement name element
-  Just (Tuple isPrefixMatch expected) ->
-    case lookupAttribute name element.attributes of
-      Nothing -> false
-      Just actual ->
-        if isPrefixMatch then isJust (StringCode.stripPrefix (Str.Pattern expected) actual)
-        else actual == expected
-
-parseCompound :: String -> Compound
-parseCompound value =
-  let
-    { tag, rest } = takeTag value
-    initial = emptyCompound { tag = if Str.null tag then Nothing else Just tag }
-  in
-    parseModifiers initial rest
-
-takeTag :: String -> { tag :: String, rest :: String }
-takeTag value = go 0
-  where
-  go index = case StringCode.charAt index value of
-    Nothing -> { tag: value, rest: "" }
-    Just character
-      | character == '#' || character == '.' || character == '[' ->
-          { tag: StringCode.take index value, rest: StringCode.drop index value }
-    _ -> go (index + 1)
-
-parseModifiers :: Compound -> String -> Compound
-parseModifiers compound value = case StringCode.charAt 0 value of
-  Just '#' ->
-    let
-      { name, rest } = takeName (StringCode.drop 1 value)
-    in
-      parseModifiers compound { id = Just name } rest
-  Just '.' ->
-    let
-      { name, rest } = takeName (StringCode.drop 1 value)
-    in
-      parseModifiers compound { classes = Array.snoc compound.classes name } rest
-  Just '[' ->
-    let
-      { inside, rest } = takeBracket (StringCode.drop 1 value)
-    in
-      parseModifiers compound { attributes = Array.snoc compound.attributes (parseAttribute inside) } rest
-  _ -> compound
-
-takeName :: String -> { name :: String, rest :: String }
-takeName value = go 0
-  where
-  go index = case StringCode.charAt index value of
-    Nothing -> { name: value, rest: "" }
-    Just character
-      | isNameCharacter character -> go (index + 1)
-    _ -> { name: StringCode.take index value, rest: StringCode.drop index value }
-
-isNameCharacter :: Char -> Boolean
-isNameCharacter character =
-  (character >= 'a' && character <= 'z')
-    || (character >= 'A' && character <= 'Z')
-    || (character >= '0' && character <= '9')
-    || character == '-'
-    || character == '_'
-
-takeBracket :: String -> { inside :: String, rest :: String }
-takeBracket value = go 0
-  where
-  go index = case StringCode.charAt index value of
-    Nothing -> { inside: value, rest: "" }
-    Just ']' -> { inside: StringCode.take index value, rest: StringCode.drop (index + 1) value }
-    _ -> go (index + 1)
-
-parseAttribute :: String -> Tuple String (Maybe (Tuple Boolean String))
-parseAttribute value =
-  case Str.split (Str.Pattern "=") value of
-    [ name ] -> Tuple (Str.trim name) Nothing
-    [ name, raw ] ->
-      let
-        trimmedName = Str.trim name
-        isPrefixMatch = isJust (StringCode.stripSuffix (Str.Pattern "^") trimmedName)
-        finalName =
-          if isPrefixMatch then
-            StringCode.take (StringCode.length trimmedName - 1) trimmedName
-          else trimmedName
-      in
-        Tuple finalName (Just (Tuple isPrefixMatch (stripQuotes (Str.trim raw))))
-    _ -> Tuple (Str.trim value) Nothing
-
-stripQuotes :: String -> String
-stripQuotes value =
-  case StringCode.charAt 0 value, StringCode.charAt (StringCode.length value - 1) value of
-    Just '"', Just '"' -> StringCode.drop 1 (StringCode.take (StringCode.length value - 1) value)
-    Just '\'', Just '\'' -> StringCode.drop 1 (StringCode.take (StringCode.length value - 1) value)
-    _, _ -> value

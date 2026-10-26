@@ -1,2 +1,5 @@
 .spago/
 output/
+
+.psc-ide-port
+.DS_Store

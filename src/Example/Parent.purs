@@ -9,8 +9,7 @@ import Foldkit.Core (Update, continue)
 import Foldkit.Html (Html)
 import Foldkit.Submodel as Submodel
 
-data Message
-  = GotCounter Counter.Message
+data Message = GotCounter Counter.Message
 
 derive instance eqMessage :: Eq Message
 
@@ -18,21 +17,14 @@ instance showMessage :: Show Message where
   show = case _ of
     GotCounter childMessage -> "GotCounter (" <> show childMessage <> ")"
 
-type Model =
-  { counter :: Counter.Model
-  , reachedTen :: Boolean
-  }
+type Model = { counter :: Counter.Model, reachedTen :: Boolean }
 
 initialModel :: Model
-initialModel =
-  { counter: Counter.initialModel
-  , reachedTen: false
-  }
+initialModel = { counter: Counter.initialModel, reachedTen: false }
 
 update :: Model -> Message -> Update Model Message Void
 update model = case _ of
-  GotCounter childMessage ->
-    Submodel.foldChild config childMessage model
+  GotCounter childMessage -> Submodel.foldChild config childMessage model
   where
   config =
     { read: _.counter
@@ -43,5 +35,4 @@ update model = case _ of
     }
 
 view :: Model -> Html Message
-view model =
-  Submodel.mapView GotCounter (Counter.view model.counter)
+view model = Submodel.mapView GotCounter (Counter.view model.counter)

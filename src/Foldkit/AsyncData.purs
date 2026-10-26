@@ -11,7 +11,8 @@ module Foldkit.AsyncData
   , map
   , match
   , revalidate
-  ) where
+  )
+  where
 
 import Prelude
 
@@ -93,17 +94,15 @@ map f = case _ of
   Refreshing value -> Refreshing (f value)
   Stale value error -> Stale (f value) error
 
-match
-  :: forall value error result
-   . { idle :: Unit -> result
-     , loading :: Unit -> result
-     , success :: value -> result
-     , failure :: error -> result
-     , refreshing :: value -> result
-     , stale :: value -> error -> result
-     }
-  -> AsyncData value error
-  -> result
+match ::
+  forall value error result.
+  { idle :: Unit -> result
+  , loading :: Unit -> result
+  , success :: value -> result
+  , failure :: error -> result
+  , refreshing :: value -> result
+  , stale :: value -> error -> result
+  } -> AsyncData value error -> result
 match handlers = case _ of
   Idle -> handlers.idle unit
   Loading -> handlers.loading unit

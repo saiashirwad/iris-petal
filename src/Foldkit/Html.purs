@@ -2,16 +2,14 @@ module Foldkit.Html
   ( Html(..)
   , Element
   , Attribute(..)
-  , Event
-  , defaultEvent
+  , KeyEvent
+  , defaultKeyEvent
   , text
   , element
   , fragment
   , empty
   , attr
   , flag
-  , prop
-  , on
   , onClick
   , onInput
   , onChange
@@ -88,36 +86,19 @@ module Foldkit.Html
   , dialog
   , details
   , summary
-  ) where
+  )
+  where
 
 import Prelude
 
-type Event =
-  { value :: String
-  , checked :: Boolean
-  , key :: String
-  , shiftKey :: Boolean
-  , ctrlKey :: Boolean
-  , altKey :: Boolean
-  , metaKey :: Boolean
-  }
+type KeyEvent =
+  { key :: String, shiftKey :: Boolean, ctrlKey :: Boolean, altKey :: Boolean, metaKey :: Boolean }
 
-defaultEvent :: Event
-defaultEvent =
-  { value: ""
-  , checked: false
-  , key: ""
-  , shiftKey: false
-  , ctrlKey: false
-  , altKey: false
-  , metaKey: false
-  }
+defaultKeyEvent :: KeyEvent
+defaultKeyEvent = { key: "", shiftKey: false, ctrlKey: false, altKey: false, metaKey: false }
 
 type Element message =
-  { tag :: String
-  , attributes :: Array (Attribute message)
-  , children :: Array (Html message)
-  }
+  { tag :: String, attributes :: Array (Attribute message), children :: Array (Html message) }
 
 data Html message
   = Element (Element message)
@@ -128,17 +109,22 @@ data Html message
 data Attribute message
   = Attribute String String
   | BooleanAttribute String Boolean
-  | Property String String
-  | Event String (Event -> message)
+  | OnClick message
+  | OnInput (String -> message)
+  | OnChange (String -> message)
+  | OnCheck (Boolean -> message)
+  | OnSubmit message
+  | OnKeyDown (KeyEvent -> message)
+  | OnFocus message
+  | OnBlur message
 
 instance functorHtml :: Functor Html where
   map f = case _ of
-    Element value ->
-      Element
-        { tag: value.tag
-        , attributes: map (mapAttribute f) value.attributes
-        , children: map (map f) value.children
-        }
+    Element value -> Element
+      { tag: value.tag
+      , attributes: map (mapAttribute f) value.attributes
+      , children: map (map f) value.children
+      }
     Text value -> Text value
     Fragment values -> Fragment (map (map f) values)
     Empty -> Empty
@@ -147,20 +133,21 @@ mapAttribute :: forall a b. (a -> b) -> Attribute a -> Attribute b
 mapAttribute f = case _ of
   Attribute key value -> Attribute key value
   BooleanAttribute key value -> BooleanAttribute key value
-  Property key value -> Property key value
-  Event event handler -> Event event (f <<< handler)
+  OnClick message -> OnClick (f message)
+  OnInput handler -> OnInput (f <<< handler)
+  OnChange handler -> OnChange (f <<< handler)
+  OnCheck handler -> OnCheck (f <<< handler)
+  OnSubmit message -> OnSubmit (f message)
+  OnKeyDown handler -> OnKeyDown (f <<< handler)
+  OnFocus message -> OnFocus (f message)
+  OnBlur message -> OnBlur (f message)
 
 text :: forall message. String -> Html message
 text = Text
 
-element
-  :: forall message
-   . String
-  -> Array (Attribute message)
-  -> Array (Html message)
-  -> Html message
-element tag attributes children =
-  Element { tag, attributes, children }
+element ::
+  forall message. String -> Array (Attribute message) -> Array (Html message) -> Html message
+element tag attributes children = Element { tag, attributes, children }
 
 fragment :: forall message. Array (Html message) -> Html message
 fragment = Fragment
@@ -174,35 +161,29 @@ attr = Attribute
 flag :: forall message. String -> Boolean -> Attribute message
 flag = BooleanAttribute
 
-prop :: forall message. String -> String -> Attribute message
-prop = Property
-
-on :: forall message. String -> (Event -> message) -> Attribute message
-on = Event
-
 onClick :: forall message. message -> Attribute message
-onClick message = Event "click" (const message)
+onClick = OnClick
 
 onInput :: forall message. (String -> message) -> Attribute message
-onInput f = Event "input" (\event -> f event.value)
+onInput = OnInput
 
 onChange :: forall message. (String -> message) -> Attribute message
-onChange f = Event "change" (\event -> f event.value)
+onChange = OnChange
 
 onCheck :: forall message. (Boolean -> message) -> Attribute message
-onCheck f = Event "change" (\event -> f event.checked)
+onCheck = OnCheck
 
 onSubmit :: forall message. message -> Attribute message
-onSubmit message = Event "submit" (const message)
+onSubmit = OnSubmit
 
-onKeyDown :: forall message. (Event -> message) -> Attribute message
-onKeyDown = Event "keydown"
+onKeyDown :: forall message. (KeyEvent -> message) -> Attribute message
+onKeyDown = OnKeyDown
 
 onFocus :: forall message. message -> Attribute message
-onFocus message = Event "focus" (const message)
+onFocus = OnFocus
 
 onBlur :: forall message. message -> Attribute message
-onBlur message = Event "blur" (const message)
+onBlur = OnBlur
 
 class_ :: forall message. String -> Attribute message
 class_ = Attribute "class"

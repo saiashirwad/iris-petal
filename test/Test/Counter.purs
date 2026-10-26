@@ -29,8 +29,7 @@ storyTests =
   , test "emits ReachedTen when the count reaches ten" do
       assertRight "counter out message"
         ( Story.runStory Counter.update Counter.initialModel do
-            for_ (Array.range 1 10) \_ ->
-              Story.send Counter.ClickedIncrement
+            for_ (Array.range 1 10) \_ -> Story.send Counter.ClickedIncrement
             Story.expectOutMessage Counter.ReachedTen
             Story.expectModel "count is ten" \model -> model.count == 10
             Story.expectNone
@@ -57,11 +56,8 @@ sceneTests =
       case
         Scene.runScene Counter.update Counter.view Counter.initialModel do
           Scene.click (Query.namedRole "button" "Nope")
-        of
+      of
         Left errorMessage ->
-          assertTrue
-            "message names the locator"
-            (Str.contains (Str.Pattern "Nope") errorMessage)
-        Right _ ->
-          assertTrue "expected the scene to fail" false
-    ]
+          assertTrue "message names the locator" (Str.contains (Str.Pattern "Nope") errorMessage)
+        Right _ -> assertTrue "expected the scene to fail" false
+  ]

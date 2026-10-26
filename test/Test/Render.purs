@@ -14,20 +14,14 @@ renderTests =
   [ test "renders the counter view to escaped HTML" do
       let
         html = renderToString (Counter.view Counter.initialModel)
-      assertTrue
-        "contains the counter output"
+      assertTrue "contains the counter output"
         ( Str.contains (Str.Pattern "<h1>Counter</h1>") html
             && Str.contains (Str.Pattern "<p>0</p>") html
             && Str.contains (Str.Pattern "<button>+</button>") html
         )
   , test "escapes text and attribute values" do
       let
-        html =
-          renderToString
-            ( Html.div
-                [ Html.title_ "\"quoted\"" ]
-                [ Html.text "<script>" ]
-            )
+        html = renderToString (Html.div [ Html.title_ "\"quoted\"" ] [ Html.text "<script>" ])
       assertTrue "escapes text" (Str.contains (Str.Pattern "&lt;script&gt;") html)
       assertTrue "escapes attributes" (Str.contains (Str.Pattern "&quot;quoted&quot;") html)
-    ]
+  ]

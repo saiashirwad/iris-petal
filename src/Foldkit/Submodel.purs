@@ -1,8 +1,4 @@
-module Foldkit.Submodel
-  ( Config
-  , foldChild
-  , mapView
-  ) where
+module Foldkit.Submodel (Config, foldChild, mapView) where
 
 import Prelude
 
@@ -19,12 +15,12 @@ type Config parentModel parentMessage childModel childMessage out =
   , onOutMessage :: out -> parentModel -> Update parentModel parentMessage Void
   }
 
-foldChild
-  :: forall parentModel parentMessage childModel childMessage out
-   . Config parentModel parentMessage childModel childMessage out
-  -> childMessage
-  -> parentModel
-  -> Update parentModel parentMessage Void
+foldChild ::
+  forall parentModel parentMessage childModel childMessage out.
+  Config parentModel parentMessage childModel childMessage out ->
+  childMessage ->
+  parentModel ->
+  Update parentModel parentMessage Void
 foldChild config childMessage parentModel =
   let
     childUpdate = config.update (config.read parentModel) childMessage
@@ -35,14 +31,11 @@ foldChild config childMessage parentModel =
   in
     outUpdate
       { commands =
-          map (Command.mapMessage config.toParentMessage) childUpdate.commands
-            <> outUpdate.commands
+          map (Command.mapMessage config.toParentMessage) childUpdate.commands <> outUpdate.commands
       , outMessage = Nothing
       }
 
-mapView
-  :: forall childMessage parentMessage
-   . (childMessage -> parentMessage)
-  -> Html childMessage
-  -> Html parentMessage
+mapView ::
+  forall childMessage parentMessage.
+  (childMessage -> parentMessage) -> Html childMessage -> Html parentMessage
 mapView = map

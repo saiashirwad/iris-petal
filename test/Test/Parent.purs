@@ -17,12 +17,9 @@ storyTests =
   [ test "a child OutMessage is handled by the parent" do
       assertRight "parent story"
         ( Story.runStory Parent.update Parent.initialModel do
-            for_ (Array.range 1 10) \_ ->
-              Story.send (Parent.GotCounter Counter.ClickedIncrement)
-            Story.expectModel "parent recorded ReachedTen" \model ->
-              model.reachedTen
-            Story.expectModel "child count is ten" \model ->
-              model.counter.count == 10
+            for_ (Array.range 1 10) \_ -> Story.send (Parent.GotCounter Counter.ClickedIncrement)
+            Story.expectModel "parent recorded ReachedTen" \model -> model.reachedTen
+            Story.expectModel "child count is ten" \model -> model.counter.count == 10
             Story.expectNoOutMessage
         )
   ]

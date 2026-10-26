@@ -1,8 +1,4 @@
-module Foldkit.Runtime
-  ( Application
-  , runApplication
-  , isBrowser
-  ) where
+module Foldkit.Runtime (Application, runApplication, isBrowser) where
 
 import Prelude
 
@@ -14,7 +10,7 @@ import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import Foldkit.Command as Command
 import Foldkit.Core (Update)
-import Foldkit.Html (Attribute(..), Event, Html(..))
+import Foldkit.Html (Attribute(..), Html(..), KeyEvent)
 
 type Application model message =
   { initialModel :: model
@@ -24,6 +20,7 @@ type Application model message =
   }
 
 foreign import data Element :: Type
+foreign import data DomEvent :: Type
 
 foreign import isBrowser :: Effect Boolean
 foreign import requireElementById :: String -> Effect Element
@@ -34,7 +31,14 @@ foreign import clearChildren :: Element -> Effect Unit
 foreign import setAttribute :: Element -> String -> String -> Effect Unit
 foreign import removeAttribute :: Element -> String -> Effect Unit
 foreign import setProperty :: Element -> String -> String -> Effect Unit
-foreign import addEventListener :: Element -> String -> (Event -> Effect Unit) -> Effect Unit
+foreign import addEventListener :: Element -> String -> (DomEvent -> Effect Unit) -> Effect Unit
+foreign import eventValue :: DomEvent -> String
+foreign import eventChecked :: DomEvent -> Boolean
+foreign import eventKey :: DomEvent -> String
+foreign import eventShiftKey :: DomEvent -> Boolean
+foreign import eventCtrlKey :: DomEvent -> Boolean
+foreign import eventAltKey :: DomEvent -> Boolean
+foreign import eventMetaKey :: DomEvent -> Boolean
 
 runApplication :: forall model message. Application model message -> Effect Unit
 runApplication app = do
@@ -42,69 +46,65 @@ runApplication app = do
   modelRef <- Ref.new app.initialModel
   render modelRef app container (app.view app.initialModel)
 
-render
-  :: forall model message
-   . Ref.Ref model
-  -> Application model message
-  -> Element
-  -> Html message
-  -> Effect Unit
+render ::
+  forall model message.
+  Ref.Ref model -> Application model message -> Element -> Html message -> Effect Unit
 render modelRef app container html = do
   clearChildren container
   renderInto (dispatch modelRef app container) container html
 
-dispatch
-  :: forall model message
-   . Ref.Ref model
-  -> Application model message
-  -> Element
-  -> message
-  -> Effect Unit
+dispatch ::
+  forall model message.
+  Ref.Ref model -> Application model message -> Element -> message -> Effect Unit
 dispatch modelRef app container message = do
   model <- Ref.read modelRef
-  let result = app.update model message
+  let
+    result = app.update model message
   Ref.write result.model modelRef
   render modelRef app container (app.view result.model)
-  for_ result.commands \commandValue ->
-    launchAff_ do
-      resultMessage <- Command.execute commandValue
-      liftEffect (dispatch modelRef app container resultMessage)
+  for_ result.commands \commandValue -> launchAff_ do
+    resultMessage <- Command.execute commandValue
+    liftEffect (dispatch modelRef app container resultMessage)
 
-renderInto
-  :: forall message
-   . (message -> Effect Unit)
-  -> Element
-  -> Html message
-  -> Effect Unit
+renderInto :: forall message. (message -> Effect Unit) -> Element -> Html message -> Effect Unit
 renderInto dispatchMessage parent = case _ of
   Text value -> do
     node <- createTextNode value
     appendChild parent node
   Empty -> pure unit
-  Fragment children ->
-    for_ children (renderInto dispatchMessage parent)
+  Fragment children -> for_ children (renderInto dispatchMessage parent)
   Element element -> do
     node <- createElement element.tag
     for_ element.attributes (renderAttribute dispatchMessage node)
     for_ element.children (renderInto dispatchMessage node)
     appendChild parent node
 
-renderAttribute
-  :: forall message
-   . (message -> Effect Unit)
-  -> Element
-  -> Attribute message
-  -> Effect Unit
+renderAttribute ::
+  forall message. (message -> Effect Unit) -> Element -> Attribute message -> Effect Unit
 renderAttribute dispatchMessage node = case _ of
   Attribute name value -> do
     setAttribute node name value
     when (name == "value") (setProperty node name value)
-  Property name value ->
-    setProperty node name value
-  BooleanAttribute name true ->
-    setAttribute node name ""
-  BooleanAttribute name false ->
-    removeAttribute node name
-  Event eventName handler ->
-    addEventListener node eventName \event ->
-      dispatchMessage (handler event)
+  BooleanAttribute name true -> setAttribute node name ""
+  BooleanAttribute name false -> removeAttribute node name
+  OnClick message -> addEventListener node "click" \_ -> dispatchMessage message
+  OnInput handler -> addEventListener node "input" \event ->
+    dispatchMessage (handler (eventValue event))
+  OnChange handler -> addEventListener node "change" \event ->
+    dispatchMessage (handler (eventValue event))
+  OnCheck handler -> addEventListener node "change" \event ->
+    dispatchMessage (handler (eventChecked event))
+  OnSubmit message -> addEventListener node "submit" \_ -> dispatchMessage message
+  OnKeyDown handler -> addEventListener node "keydown" \event ->
+    dispatchMessage (handler (keyEvent event))
+  OnFocus message -> addEventListener node "focus" \_ -> dispatchMessage message
+  OnBlur message -> addEventListener node "blur" \_ -> dispatchMessage message
+
+keyEvent :: DomEvent -> KeyEvent
+keyEvent event =
+  { key: eventKey event
+  , shiftKey: eventShiftKey event
+  , ctrlKey: eventCtrlKey event
+  , altKey: eventAltKey event
+  , metaKey: eventMetaKey event
+  }

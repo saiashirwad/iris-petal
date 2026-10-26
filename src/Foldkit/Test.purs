@@ -1,12 +1,4 @@
-module Foldkit.Test
-  ( Test
-  , test
-  , suite
-  , runTests
-  , assertEqual
-  , assertTrue
-  , assertRight
-  ) where
+module Foldkit.Test (Test, test, suite, runTests, assertEqual, assertTrue, assertRight) where
 
 import Prelude
 
@@ -23,10 +15,7 @@ import Effect.Exception (throw)
 
 foreign import setExitCode :: Int -> Effect Unit
 
-type Test =
-  { name :: String
-  , run :: Aff Unit
-  }
+type Test = { name :: String, run :: Aff Unit }
 
 test :: String -> Aff Unit -> Test
 test name run = { name, run }
@@ -39,62 +28,27 @@ runTests tests = do
   results <- for (Array.mapWithIndex Tuple tests) \(Tuple index value) -> do
     result <- try value.run
     liftEffect case result of
-      Left error ->
-        log
-          ( "FAIL "
-              <> show (index + 1)
-              <> ". "
-              <> value.name
-              <> "\n     "
-              <> Exception.message error
-          )
-      Right _ ->
-        log ("PASS " <> show (index + 1) <> ". " <> value.name)
+      Left error -> log
+        ("FAIL " <> show (index + 1) <> ". " <> value.name <> "\n     " <> Exception.message error)
+      Right _ -> log ("PASS " <> show (index + 1) <> ". " <> value.name)
     pure result
-  let failures = Array.length (Array.filter isLeft results)
+  let
+    failures = Array.length (Array.filter isLeft results)
   liftEffect do
-    log
-      ( "\n"
-          <> show (Array.length tests - failures)
-          <> " passed, "
-          <> show failures
-          <> " failed."
-      )
+    log ("\n" <> show (Array.length tests - failures) <> " passed, " <> show failures <> " failed.")
     when (failures > 0) (setExitCode 1)
 
 assertTrue :: String -> Boolean -> Aff Unit
-assertTrue label condition =
-  unless condition
-    (liftEffect (throw label))
+assertTrue label condition = unless condition (liftEffect (throw label))
 
-assertEqual
-  :: forall value
-   . Eq value
-  => Show value
-  => String
-  -> value
-  -> value
-  -> Aff Unit
+assertEqual :: forall value. Eq value => Show value => String -> value -> value -> Aff Unit
 assertEqual label expected actual =
-  if expected == actual then pure unit
-  else
-    liftEffect
-      ( throw
-          ( label
-              <> "\n  expected: "
-              <> show expected
-              <> "\n  actual:   "
-              <> show actual
-          )
-      )
+  if expected == actual
+  then pure unit
+  else liftEffect
+    (throw (label <> "\n  expected: " <> show expected <> "\n  actual:   " <> show actual))
 
-assertRight
-  :: forall value
-   . String
-  -> Either String value
-  -> Aff Unit
+assertRight :: forall value. String -> Either String value -> Aff Unit
 assertRight label result = case result of
-  Left errorMessage ->
-    liftEffect
-      (throw (label <> "\n  " <> errorMessage))
+  Left errorMessage -> liftEffect (throw (label <> "\n  " <> errorMessage))
   Right _ -> pure unit

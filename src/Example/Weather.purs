@@ -57,16 +57,10 @@ instance showMessage :: Show Message where
     SucceededFetchWeather weather -> "SucceededFetchWeather " <> show weather
     FailedFetchWeather error -> "FailedFetchWeather " <> show error
 
-type Model =
-  { zipCode :: String
-  , weather :: AsyncData Weather String
-  }
+type Model = { zipCode :: String, weather :: AsyncData Weather String }
 
 initialModel :: Model
-initialModel =
-  { zipCode: ""
-  , weather: Idle
-  }
+initialModel = { zipCode: "", weather: Idle }
 
 sampleWeather :: String -> Weather
 sampleWeather zipCode =
@@ -79,12 +73,9 @@ sampleWeather zipCode =
   , windSpeed: 10
   }
 
-type FetchWeatherArgs =
-  { zipCode :: String }
+type FetchWeatherArgs = { zipCode :: String }
 
-data FetchWeatherResult
-  = FetchWeatherSucceeded Weather
-  | FetchWeatherFailed String
+data FetchWeatherResult = FetchWeatherSucceeded Weather | FetchWeatherFailed String
 
 derive instance eqFetchWeatherResult :: Eq FetchWeatherResult
 
@@ -94,51 +85,41 @@ instance showFetchWeatherResult :: Show FetchWeatherResult where
     FetchWeatherFailed error -> "FetchWeatherFailed " <> show error
 
 fetchWeather :: Definition FetchWeatherArgs FetchWeatherResult Message
-fetchWeather =
-  define
-    (CommandName "FetchWeather")
-    (\args -> pure (FetchWeatherSucceeded (sampleWeather args.zipCode)))
-    ( case _ of
-        FetchWeatherSucceeded weather -> SucceededFetchWeather weather
-        FetchWeatherFailed error -> FailedFetchWeather error
-    )
+fetchWeather = define (CommandName "FetchWeather")
+  (\args -> pure (FetchWeatherSucceeded (sampleWeather args.zipCode)))
+  ( case _ of
+      FetchWeatherSucceeded weather -> SucceededFetchWeather weather
+      FetchWeatherFailed error -> FailedFetchWeather error
+  )
 
 update :: Model -> Message -> Update Model Message Void
 update model = case _ of
-  UpdatedZipCode value ->
-    continue model { zipCode = value }
+  UpdatedZipCode value -> continue model { zipCode = value }
   SubmittedWeatherForm ->
-    if isPending model.weather then continue model
+    if isPending model.weather
+    then continue model
     else
-      withCommands
-        (model { weather = Loading })
-        [ command fetchWeather { zipCode: model.zipCode } ]
-  SucceededFetchWeather weather ->
-    continue model { weather = Success weather }
-  FailedFetchWeather error ->
-    continue model { weather = Failure error }
+      withCommands (model { weather = Loading }) [ command fetchWeather { zipCode: model.zipCode } ]
+  SucceededFetchWeather weather -> continue model { weather = Success weather }
+  FailedFetchWeather error -> continue model { weather = Failure error }
 
 view :: Model -> Html Message
-view model =
-  div [ class_ "weather" ]
-    [ h1 [] [ text "Weather" ]
-    , form [ onSubmit SubmittedWeatherForm ]
-        [ label [ for_ "zip" ] [ text "Zip code" ]
-        , input
-            [ id_ "zip"
-            , type_ "text"
-            , value_ model.zipCode
-            , placeholder_ "Enter a zip code"
-            , onInput UpdatedZipCode
-            ]
-        , button
-            [ type_ "submit"
-            , disabled_ (isPending model.weather)
-            ]
-            [ text (if isPending model.weather then "Loading..." else "Get Weather") ]
-        ]
-    , weatherBody model.weather
-    ]
+view model = div [ class_ "weather" ]
+  [ h1 [] [ text "Weather" ]
+  , form [ onSubmit SubmittedWeatherForm ]
+      [ label [ for_ "zip" ] [ text "Zip code" ]
+      , input
+          [ id_ "zip"
+          , type_ "text"
+          , value_ model.zipCode
+          , placeholder_ "Enter a zip code"
+          , onInput UpdatedZipCode
+          ]
+      , button [ type_ "submit", disabled_ (isPending model.weather) ]
+          [ text (if isPending model.weather then "Loading..." else "Get Weather") ]
+      ]
+  , weatherBody model.weather
+  ]
 
 weatherBody :: AsyncData Weather String -> Html Message
 weatherBody = case _ of
@@ -150,12 +131,11 @@ weatherBody = case _ of
   Stale weather _ -> weatherCard weather
 
 weatherCard :: Weather -> Html Message
-weatherCard weather =
-  article [ class_ "weather-card" ]
-    [ h2 [] [ text weather.zipCode ]
-    , p [] [ text (weather.locationName <> ", " <> weather.region) ]
-    , p [] [ text (show weather.temperature <> "°F") ]
-    , p [] [ text weather.description ]
-    , p [] [ text (show weather.humidity <> "%") ]
-    , p [] [ text (show weather.windSpeed <> " mph") ]
-    ]
+weatherCard weather = article [ class_ "weather-card" ]
+  [ h2 [] [ text weather.zipCode ]
+  , p [] [ text (weather.locationName <> ", " <> weather.region) ]
+  , p [] [ text (show weather.temperature <> "°F") ]
+  , p [] [ text weather.description ]
+  , p [] [ text (show weather.humidity <> "%") ]
+  , p [] [ text (show weather.windSpeed <> " mph") ]
+  ]

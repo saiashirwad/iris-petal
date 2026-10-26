@@ -34,10 +34,8 @@ sceneTests =
             Scene.typeText (Query.label "Zip code") "90210"
             Scene.submit (Query.role "form")
             Scene.expectExists (Query.namedRole "button" "Loading...")
-            Scene.expectCommands
-              [ Command.command Weather.fetchWeather { zipCode: "90210" } ]
-            Scene.resolve
-              Weather.fetchWeather
+            Scene.expectCommands [ Command.byDefinition Weather.fetchWeather ]
+            Scene.resolve Weather.fetchWeather
               (Weather.FetchWeatherSucceeded (Weather.sampleWeather "90210"))
         )
   , test "resolving the fetch renders the weather card" do
@@ -45,15 +43,12 @@ sceneTests =
         ( Scene.runScene Weather.update Weather.view Weather.initialModel do
             Scene.typeText (Query.label "Zip code") "90210"
             Scene.submit (Query.role "form")
-            Scene.resolve
-              Weather.fetchWeather
+            Scene.resolve Weather.fetchWeather
               (Weather.FetchWeatherSucceeded (Weather.sampleWeather "90210"))
             Scene.expectExists (Query.role "article")
             Scene.within (Query.role "article") do
               Scene.expectExists (Query.namedRole "heading" "90210")
-              Scene.expectText
-                (Query.text "Beverly Hills, California")
-                "Beverly Hills, California"
+              Scene.expectText (Query.text "Beverly Hills, California") "Beverly Hills, California"
               Scene.expectText (Query.text "72°F") "72°F"
               Scene.expectTextContaining (Query.role "article") "Clear sky"
               Scene.expectTextContaining (Query.role "article") "45%"
@@ -66,10 +61,8 @@ sceneTests =
             Scene.typeText (Query.label "Zip code") "90210"
             Scene.click (Query.namedRole "button" "Get Weather")
             Scene.expectExists (Query.namedRole "button" "Loading...")
-            Scene.expectCommands
-              [ Command.command Weather.fetchWeather { zipCode: "90210" } ]
-            Scene.resolve
-              Weather.fetchWeather
+            Scene.expectCommands [ Command.byDefinition Weather.fetchWeather ]
+            Scene.resolve Weather.fetchWeather
               (Weather.FetchWeatherSucceeded (Weather.sampleWeather "90210"))
             Scene.expectExists (Query.role "article")
         )
@@ -78,9 +71,7 @@ sceneTests =
         ( Scene.runScene Weather.update Weather.view Weather.initialModel do
             Scene.typeText (Query.label "Zip code") "00000"
             Scene.submit (Query.role "form")
-            Scene.resolve
-              Weather.fetchWeather
-              (Weather.FetchWeatherFailed "Location not found")
+            Scene.resolve Weather.fetchWeather (Weather.FetchWeatherFailed "Location not found")
             Scene.expectAbsent (Query.role "article")
             Scene.expectTextContaining (Query.role "alert") "Location not found"
             Scene.expectNone
@@ -89,11 +80,8 @@ sceneTests =
       case
         Scene.runScene Weather.update Weather.view Weather.initialModel do
           Scene.expectExists (Query.namedRole "button" "Nope")
-        of
+      of
         Left errorMessage ->
-          assertTrue
-            "message names the locator"
-            (Str.contains (Str.Pattern "Nope") errorMessage)
-        Right _ ->
-          assertTrue "expected the scene to fail" false
-    ]
+          assertTrue "message names the locator" (Str.contains (Str.Pattern "Nope") errorMessage)
+        Right _ -> assertTrue "expected the scene to fail" false
+  ]

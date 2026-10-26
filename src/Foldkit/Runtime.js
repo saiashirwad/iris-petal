@@ -36,22 +36,31 @@ export const setProperty = (element) => (name) => (value) => () => {
 
 export const addEventListener = (element) => (eventName) => (handler) => () => {
   element.addEventListener(eventName, (event) => {
-    const target = event.target;
-    const payload = {
-      value:
-        target !== null && typeof target === "object" && "value" in target
-          ? String(target.value)
-          : "",
-      checked:
-        target !== null && typeof target === "object" && "checked" in target
-          ? Boolean(target.checked)
-          : false,
-      key: typeof event.key === "string" ? event.key : "",
-      shiftKey: Boolean(event.shiftKey),
-      ctrlKey: Boolean(event.ctrlKey),
-      altKey: Boolean(event.altKey),
-      metaKey: Boolean(event.metaKey),
-    };
-    handler(payload)();
+    handler(event)();
   });
 };
+
+export const eventValue = (event) => {
+  const target = event.target;
+  return target !== null && typeof target === "object" && "value" in target
+    ? String(target.value)
+    : "";
+};
+
+export const eventChecked = (event) => {
+  const target = event.target;
+  return target !== null && typeof target === "object" && "checked" in target
+    ? Boolean(target.checked)
+    : false;
+};
+
+export const eventKey = (event) =>
+  typeof event.key === "string" ? event.key : "";
+
+export const eventShiftKey = (event) => Boolean(event.shiftKey);
+
+export const eventCtrlKey = (event) => Boolean(event.ctrlKey);
+
+export const eventAltKey = (event) => Boolean(event.altKey);
+
+export const eventMetaKey = (event) => Boolean(event.metaKey);

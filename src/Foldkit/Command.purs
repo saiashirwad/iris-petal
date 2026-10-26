@@ -2,11 +2,13 @@ module Foldkit.Command
   ( CommandName(..)
   , Command
   , Definition
+  , Matcher
   , define
   , define0
   , command
   , command0
   , definitionName
+  , liftResult
   , name
   , arguments
   , execute
@@ -14,9 +16,14 @@ module Foldkit.Command
   , mapDefinition
   , matches
   , matchesDefinition
+  , byDefinition
+  , byInstance
+  , matcherMatches
   , describe
   , describeDefinition
-  ) where
+  , describeMatcher
+  )
+  where
 
 import Prelude
 
@@ -28,71 +35,36 @@ derive newtype instance eqCommandName :: Eq CommandName
 derive newtype instance ordCommandName :: Ord CommandName
 derive newtype instance showCommandName :: Show CommandName
 
-newtype Command message = Command
-  { name :: CommandName
-  , arguments :: String
-  , run :: Aff message
-  }
+newtype Command message = Command { name :: CommandName, arguments :: String, run :: Aff message }
 
-type Definition args result message =
-  { name :: CommandName
-  , lift :: result -> message
-  , build :: args -> Command message
-  }
+data Definition args result message
+  = Definition { name :: CommandName, run :: args -> Aff result, lift :: result -> message }
 
-define
-  :: forall args result message
-   . Show args
-  => CommandName
-  -> (args -> Aff result)
-  -> (result -> message)
-  -> Definition args result message
-define commandName run lift =
-  { name: commandName
-  , lift
-  , build: \args ->
-      Command
-        { name: commandName
-        , arguments: show args
-        , run: map lift (run args)
-        }
-  }
+data Matcher message = MatchDefinition CommandName | MatchInstance (Command message)
 
-define0
-  :: forall result message
-   . CommandName
-  -> Aff result
-  -> (result -> message)
-  -> Definition Unit result message
-define0 commandName run lift =
-  { name: commandName
-  , lift
-  , build: \_ ->
-      Command
-        { name: commandName
-        , arguments: ""
-        , run: map lift run
-        }
-  }
+define ::
+  forall args result message.
+  CommandName -> (args -> Aff result) -> (result -> message) -> Definition args result message
+define commandName run lift = Definition { name: commandName, run, lift }
 
-command
-  :: forall args result message
-   . Definition args result message
-  -> args
-  -> Command message
-command definition = definition.build
+define0 ::
+  forall result message.
+  CommandName -> Aff result -> (result -> message) -> Definition Unit result message
+define0 commandName run lift = define commandName (\_ -> run) lift
 
-command0
-  :: forall result message
-   . Definition Unit result message
-  -> Command message
-command0 definition = definition.build unit
+command ::
+  forall args result message. Show args => Definition args result message -> args -> Command message
+command (Definition definition) args = Command
+  { name: definition.name, arguments: show args, run: map definition.lift (definition.run args) }
 
-definitionName
-  :: forall args result message
-   . Definition args result message
-  -> CommandName
-definitionName definition = definition.name
+command0 :: forall result message. Definition Unit result message -> Command message
+command0 definition = command definition unit
+
+definitionName :: forall args result message. Definition args result message -> CommandName
+definitionName (Definition definition) = definition.name
+
+liftResult :: forall args result message. Definition args result message -> result -> message
+liftResult (Definition definition) = definition.lift
 
 name :: forall message. Command message -> CommandName
 name (Command value) = value.name
@@ -104,43 +76,46 @@ execute :: forall message. Command message -> Aff message
 execute (Command value) = value.run
 
 mapMessage :: forall a b. (a -> b) -> Command a -> Command b
-mapMessage f (Command value) =
-  Command value { run = map f value.run }
+mapMessage f (Command value) = Command value { run = map f value.run }
 
-mapDefinition
-  :: forall args result message parentMessage
-   . (message -> parentMessage)
-  -> Definition args result message
-  -> Definition args result parentMessage
-mapDefinition f definition =
-  definition
-    { lift = f <<< definition.lift
-    , build = mapMessage f <<< definition.build
-    }
+mapDefinition ::
+  forall args result message parentMessage.
+  (message -> parentMessage) ->
+  Definition args result message ->
+  Definition args result parentMessage
+mapDefinition f (Definition definition) = Definition definition { lift = f <<< definition.lift }
 
 matches :: forall a b. Command a -> Command b -> Boolean
 matches (Command left) (Command right) =
   left.name == right.name && left.arguments == right.arguments
 
-matchesDefinition
-  :: forall args result message
-   . Definition args result message
-  -> Command message
-  -> Boolean
-matchesDefinition definition commandValue =
-  definition.name == name commandValue
+matchesDefinition ::
+  forall args result message. Definition args result message -> Command message -> Boolean
+matchesDefinition definition commandValue = definitionName definition == name commandValue
+
+byDefinition :: forall args result message. Definition args result message -> Matcher message
+byDefinition definition = MatchDefinition (definitionName definition)
+
+byInstance :: forall message. Command message -> Matcher message
+byInstance = MatchInstance
+
+matcherMatches :: forall message. Matcher message -> Command message -> Boolean
+matcherMatches matcher commandValue = case matcher of
+  MatchDefinition commandName -> commandName == name commandValue
+  MatchInstance expected -> matches expected commandValue
 
 describe :: forall message. Command message -> String
-describe commandValue =
-  case arguments commandValue of
-    "" -> show (name commandValue)
-    commandArguments -> show (name commandValue) <> " " <> commandArguments
+describe commandValue = case arguments commandValue of
+  "" -> show (name commandValue)
+  commandArguments -> show (name commandValue) <> " " <> commandArguments
 
-describeDefinition
-  :: forall args result message
-   . Definition args result message
-  -> String
-describeDefinition definition = show definition.name
+describeDefinition :: forall args result message. Definition args result message -> String
+describeDefinition definition = show (definitionName definition)
+
+describeMatcher :: forall message. Matcher message -> String
+describeMatcher = case _ of
+  MatchDefinition commandName -> show commandName
+  MatchInstance commandValue -> describe commandValue
 
 instance showCommand :: Show (Command message) where
   show = describe
