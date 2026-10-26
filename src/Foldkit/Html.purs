@@ -75,6 +75,9 @@ module Foldkit.Html
   , img
   , figure
   , figcaption
+  , dl
+  , dt
+  , dd
   , table
   , thead
   , tbody
@@ -355,6 +358,15 @@ figure = element "figure"
 
 figcaption :: forall message. Array (Attribute message) -> Array (Html message) -> Html message
 figcaption = element "figcaption"
+
+dl :: forall message. Array (Attribute message) -> Array (Html message) -> Html message
+dl = element "dl"
+
+dt :: forall message. Array (Attribute message) -> Array (Html message) -> Html message
+dt = element "dt"
+
+dd :: forall message. Array (Attribute message) -> Array (Html message) -> Html message
+dd = element "dd"
 
 table :: forall message. Array (Attribute message) -> Array (Html message) -> Html message
 table = element "table"
