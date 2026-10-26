@@ -57,10 +57,12 @@ type RoleOptions =
 defaultRoleOptions :: RoleOptions
 defaultRoleOptions = { name: Nothing, level: Nothing, disabled: Nothing, checked: Nothing }
 
+data TextMatch = ExactText String | ContainsText String
+
 data Locator
   = ByRole String RoleOptions
   | ByLabel String
-  | ByText String Boolean
+  | ByText TextMatch
   | ByPlaceholder String
   | ByAltText String
   | ByTitle String
@@ -84,10 +86,10 @@ label :: String -> Locator
 label = ByLabel
 
 text :: String -> Locator
-text value = ByText value true
+text value = ByText (ExactText value)
 
 textContaining :: String -> Locator
-textContaining value = ByText value false
+textContaining value = ByText (ContainsText value)
 
 placeholder :: String -> Locator
 placeholder = ByPlaceholder
@@ -125,8 +127,8 @@ describe = case _ of
            Just nameValue -> " named \"" <> nameValue <> "\""
        )
   ByLabel value -> "label \"" <> value <> "\""
-  ByText value true -> "text \"" <> value <> "\""
-  ByText value false -> "text containing \"" <> value <> "\""
+  ByText (ExactText value) -> "text \"" <> value <> "\""
+  ByText (ContainsText value) -> "text containing \"" <> value <> "\""
   ByPlaceholder value -> "placeholder \"" <> value <> "\""
   ByAltText value -> "alt text \"" <> value <> "\""
   ByTitle value -> "title \"" <> value <> "\""
@@ -170,7 +172,7 @@ refsFor :: forall message. Locator -> Html message -> Array (NodeRef message)
 refsFor locator root = case locator of
   ByRole value options -> Array.filter (matchesRole value options root) (refs root)
   ByLabel value -> Array.filter (matchesLabel value root) (refs root)
-  ByText value exact -> deepest (Array.filter (matchesText value exact) (refs root))
+  ByText match -> deepest (Array.filter (matchesText match) (refs root))
   ByPlaceholder value -> Array.filter (matchesAttribute "placeholder" value) (refs root)
   ByAltText value -> Array.filter (matchesAttribute "alt" value) (refs root)
   ByTitle value -> Array.filter (matchesAttribute "title" value) (refs root)
@@ -300,13 +302,14 @@ normalizeWhitespace = Str.trim
   <<< Str.replaceAll (Str.Pattern "\t") (Str.Replacement " ")
   <<< Str.replaceAll (Str.Pattern "\r") (Str.Replacement " ")
 
-matchesText :: forall message. String -> Boolean -> NodeRef message -> Boolean
-matchesText target exact ref =
+matchesText :: forall message. TextMatch -> NodeRef message -> Boolean
+matchesText match ref =
   let
     actual = normalizeWhitespace (textContent (Element ref.element))
-    expected = normalizeWhitespace target
   in
-    if exact then actual == expected else Str.contains (Str.Pattern expected) actual
+    case match of
+      ExactText target -> actual == normalizeWhitespace target
+      ContainsText target -> Str.contains (Str.Pattern (normalizeWhitespace target)) actual
 
 matchesAttribute :: forall message. String -> String -> NodeRef message -> Boolean
 matchesAttribute key target ref = lookupAttribute key ref.element.attributes == Just target
