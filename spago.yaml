@@ -1,0 +1,23 @@
+package:
+  name: iris-foldkit
+  dependencies:
+    - aff
+    - arrays
+    - console
+    - effect
+    - either
+    - exceptions
+    - foldable-traversable
+    - maybe
+    - prelude
+    - refs
+    - strings
+    - transformers
+    - tuples
+  test:
+    main: Test.Main
+    dependencies:
+      - assert
+workspace:
+  packageSet:
+    registry: 81.6.0
