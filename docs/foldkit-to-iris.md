@@ -89,7 +89,7 @@ needed. The command itself is inert data:
 ```purescript
 newtype Command message = Command
   { name :: CommandName
-  , arguments :: String
+  , arguments :: Maybe Json
   , run :: Aff message
   }
 ```
@@ -100,13 +100,13 @@ message it produces:
 ```purescript
 data Definition args result message = Definition
   { name :: CommandName
-  , renderArgs :: args -> String
+  , encodeArgs :: args -> Maybe Json
   , run :: args -> Aff result
   , lift :: result -> message
   }
 
 define
-  :: Show args
+  :: EncodeJson args
   => CommandName
   -> (args -> Aff result)
   -> (result -> message)
@@ -136,15 +136,19 @@ Passing `ClickedIncrement` where a `FetchWeatherResult` belongs is a compile
 error. FoldKit reaches the same place with `ResultMessageForMatcher` and a
 conditional type; PureScript just has a type parameter.
 
-The pending-command representation is just name plus canonical argument text.
-A definition matches by name. An instance matches by name and arguments. That
-is exactly FoldKit's definition-vs-instance distinction, without a unique symbol
-brand.
+The pending-command representation is a name plus a `Maybe Json` payload. A
+definition captures an `EncodeJson args` dictionary and encodes its typed
+arguments once, at construction. Matching compares the JSON structurally, so two
+commands with the same data are the same instance even if a `Show` instance
+would have rendered them differently. A definition matches by name; an instance
+matches by name and payload. That is exactly FoldKit's definition-vs-instance
+distinction, without a unique symbol brand.
 
-What is lost: structural argument equality. `show args` is canonical text, not a
-deep-equal check. This is a deliberate trade. It keeps `Command` free of an
-existential argument type and makes every failure print the arguments the test
-saw. Commands should carry data, not functions, so this is a small constraint.
+This is the best available answer without existentials. A command list is
+heterogeneous, so the arguments cannot all share a type; encoding them to the
+canonical JSON value keeps construction typed and matching structural. The
+constraint is that command arguments must be JSON data, which is what a command
+should carry anyway.
 
 Interruption, `mapEffect`, and keyed in-flight commands are deferred. `Aff`
 fibers and `bracket` are the eventual implementation; they do not belong in the

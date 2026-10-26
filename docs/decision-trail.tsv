@@ -1,7 +1,7 @@
 id	phase	decision	alternatives	evidence	status
 D01	frame	Use a monadic Story/Scene interpreter instead of a flat step array or indexed/free DSL	Flat step list; indexed/free DSL; capability-indexed Scenario	docs/scene-design.md; arena candidate designs; test/Test/Counter.purs; test/Test/Weather/Scene.purs	accepted
 D02	frame	Make Command definitions result-typed: Definition args result message with lift at the definition	Keep Definition args message and resolve with a Message; use a result-message conditional type	example command Weather.fetchWeather; test Test.Command; reviewer verdict	accepted
-D03	frame	Commands are inert data: name, canonical argument text, Aff runner	Store existential structured args; run effects in tests	Foldkit.Command; Simulation.resolveBy; test Test.Command	accepted
+D03	frame	Commands are inert data: name, structurally comparable JSON payload, Aff runner	Store existential structured args; run effects in tests	Foldkit.Command; Simulation.resolveBy; test Test.Command	accepted
 D04	frame	Expose definition matchers and instance matchers in expectCommands	Only instance equality; only name equality	Foldkit.Command.Matcher; test/Test/Command.purs; test Test.Weather.Story	accepted
 D05	design	Represent events as typed Attribute constructors, not string keys plus payload records	Generic on "event-name" handler table; DOM Event record	Foldkit.Html.Attribute; Foldkit.Query find*Handler; Foldkit.Runtime renderAttribute	accepted
 D06	design	Keep Html as a pure functor; an event carries its Message or handler	Runtime dispatch singleton; HtmlBuilder context stack	Foldkit.Html; Foldkit.Scene currentRoot; no happy-dom in tests	accepted
@@ -9,7 +9,7 @@ D07	design	Scene stores only locator scope in ReaderT and uses local for within	
 D08	design	Put pending-command rules in one Simulation module and write actions once with MonadState/MonadError	Duplicate actions in Story and Scene; bespoke MonadTest class	Foldkit.Simulation; Foldkit.Story; Foldkit.Scene	accepted
 D09	design	Pass the initial model to the runner; delete Story.given	Keep given as the first step; use Maybe model in state	Foldkit.Story.runStory; test suites	accepted
 D10	design	Drop the CSS selector locator and its hand-written parser	Keep a partial selector parser; add a parser-combinator dependency	Foldkit.Query exports; test suites use role/label/text only	accepted
-D11	design	Use canonical Show args text for command argument matching	Existential structured args with Eq; JSON encoding	Foldkit.Command.arguments; Simulation.formatCommands; docs/foldkit-to-iris.md	accepted with tradeoff
+D11	design	Encode typed command args to Json at definition construction and compare structurally	Canonical Show text; existential args with Eq	Foldkit.Command; docs/foldkit-to-iris.md; test Test.Command	accepted
 D12	design	Do not implement expectIgnored/expectHandled; handlers are total typed actions	Port FoldKit's ignored-interaction state machine	Foldkit.Html.Attribute; Foldkit.Scene.click	accepted
 D13	design	Submodel composition is one record with read/write/update/toParentMessage/onOutMessage	Four ChildFold shapes with type-level policy switches	Foldkit.Submodel; Example.Parent; test Test.Parent	accepted
 D14	design	No runtime Schema layer for models or messages	Schema.Struct plus defineMessageUnion; Generic codecs	Actor model and message ADTs; docs/idiomatic-purescript.md	accepted
@@ -29,3 +29,4 @@ V09	verify	Full suite passes 33/33 after Pokedex and HTTP	none	iris test output:
 V10	verify	HMR updates a live page after a PureScript edit	Vite full reload only; no watcher	Playwright watched the h1 change from a source edit; iris watch rebuilt output	scripts/dev.sh; HMR smoke run	verified
 V11	verify	Real PokéAPI list fetch and Argonaut decode returns 151 entries	Mock only	iris run --main Example.PokedexSmoke printed OK 151 Pokémon	Temporary smoke module	verified
 V12	verify	Browser smoke: list, focus survives search, filter, detail panel	Pure tests only	npm run smoke printed Pokedex smoke passed	scripts/smoke-pokedex.mjs	verified
+D19	design	Capture EncodeJson in Definition so command construction is typed and matching is structural JSON	Show args; existential args; no argument payload	Foldkit.Command.define; Weather fetchWeather; Pokedex fetchPokemonDetail	accepted

@@ -121,13 +121,13 @@ type Program model message input out =
 ADT and the parent handles it. Messages are ordinary ADTs, so `update` is checked
 for exhaustiveness. There is no runtime Schema for the model or the messages.
 
-A command is inert data with a name, canonical argument text, and an `Aff`
-runner. A definition owns the result-to-message lift:
+A command is inert data with a name, a structurally comparable JSON payload,
+and an `Aff` runner. A definition owns the result-to-message lift:
 
 ```purescript
 data Definition args result message = Definition
   { name :: CommandName
-  , renderArgs :: args -> String
+  , encodeArgs :: args -> Maybe Json
   , run :: args -> Aff result
   , lift :: result -> message
   }

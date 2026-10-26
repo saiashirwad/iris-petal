@@ -92,22 +92,24 @@ share the command/assertion actions. Those changes are in the code.
 
 ## Commands are inert data
 
-A command carries a name, canonical argument text, and an `Aff` runner. The test
-runner never calls the runner.
+A command carries a name, a structurally comparable JSON payload, and an `Aff`
+runner. The test runner never calls the runner.
 
 ```purescript
 newtype Command message = Command
   { name :: CommandName
-  , arguments :: String
+  , arguments :: Maybe Json
   , run :: Aff message
   }
 ```
 
-A definition is a data type, not a callable object with a brand:
+A definition is a data type, not a callable object with a brand. It captures the
+`EncodeJson` dictionary for its typed arguments:
 
 ```purescript
 data Definition args result message = Definition
   { name :: CommandName
+  , encodeArgs :: args -> Maybe Json
   , run :: args -> Aff result
   , lift :: result -> message
   }
@@ -140,7 +142,7 @@ byInstance :: Command message -> Matcher message
 
 - **Definition match:** name only. `expectCommands [ byDefinition fetchWeather ]`
   means "one `FetchWeather`, whatever its arguments".
-- **Instance match:** name plus exact canonical arguments.
+- **Instance match:** name plus structurally equal JSON arguments.
   `expectCommands [ byInstance (Command.command fetchWeather { zipCode: "90210" }) ]`
   means "that invocation".
 - `resolve definition result` uses the definition match. It is an error if two

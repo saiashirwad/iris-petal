@@ -27,36 +27,54 @@ module Foldkit.Command
 
 import Prelude
 
+import Data.Argonaut.Core (Json, stringify)
+import Data.Argonaut.Encode (class EncodeJson, encodeJson)
+import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 
 newtype CommandName = CommandName String
 
 derive newtype instance eqCommandName :: Eq CommandName
 derive newtype instance ordCommandName :: Ord CommandName
+
 instance showCommandName :: Show CommandName where
   show (CommandName value) = value
 
-newtype Command message = Command { name :: CommandName, arguments :: String, run :: Aff message }
+newtype Command message =
+  Command { name :: CommandName, arguments :: Maybe Json, run :: Aff message }
 
 data Definition args result message
-  = Definition { name :: CommandName, run :: args -> Aff result, lift :: result -> message }
+  = Definition
+      { name :: CommandName
+      , encodeArgs :: args -> Maybe Json
+      , run :: args -> Aff result
+      , lift :: result -> message
+      }
 
 data Matcher message = MatchDefinition CommandName | MatchInstance (Command message)
 
 define ::
   forall args result message.
-  CommandName -> (args -> Aff result) -> (result -> message) -> Definition args result message
-define commandName run lift = Definition { name: commandName, run, lift }
+  EncodeJson args =>
+  CommandName ->
+  (args -> Aff result) ->
+  (result -> message) ->
+  Definition args result message
+define commandName run lift =
+  Definition { name: commandName, encodeArgs: Just <<< encodeJson, run, lift }
 
 define0 ::
   forall result message.
   CommandName -> Aff result -> (result -> message) -> Definition Unit result message
-define0 commandName run lift = define commandName (\_ -> run) lift
+define0 commandName run lift =
+  Definition { name: commandName, encodeArgs: const Nothing, run: \_ -> run, lift }
 
-command ::
-  forall args result message. Show args => Definition args result message -> args -> Command message
+command :: forall args result message. Definition args result message -> args -> Command message
 command (Definition definition) args = Command
-  { name: definition.name, arguments: show args, run: map definition.lift (definition.run args) }
+  { name: definition.name
+  , arguments: definition.encodeArgs args
+  , run: map definition.lift (definition.run args)
+  }
 
 command0 :: forall result message. Definition Unit result message -> Command message
 command0 definition = command definition unit
@@ -70,7 +88,7 @@ liftResult (Definition definition) = definition.lift
 name :: forall message. Command message -> CommandName
 name (Command value) = value.name
 
-arguments :: forall message. Command message -> String
+arguments :: forall message. Command message -> Maybe Json
 arguments (Command value) = value.arguments
 
 execute :: forall message. Command message -> Aff message
@@ -107,8 +125,8 @@ matcherMatches matcher commandValue = case matcher of
 
 describe :: forall message. Command message -> String
 describe commandValue = case arguments commandValue of
-  "" -> show (name commandValue)
-  commandArguments -> show (name commandValue) <> " " <> commandArguments
+  Nothing -> show (name commandValue)
+  Just commandArguments -> show (name commandValue) <> " " <> stringify commandArguments
 
 describeDefinition :: forall args result message. Definition args result message -> String
 describeDefinition definition = show (definitionName definition)

@@ -15,6 +15,9 @@ Model the domain with ADTs and records before writing logic.
 - Separate a definition from an instance when they have different lifetimes:
   `Definition args result message` and `Command message`, not one callable
   object that is both.
+- Encode command arguments once in the definition (`EncodeJson args`) and store
+  a structural `Json` payload on the instance. Do not key identity on `Show`
+  text.
 
 Do not encode a variant as a string plus optional fields. Do not use a record
 with `Maybe` fields where a sum type says which combinations are legal.
