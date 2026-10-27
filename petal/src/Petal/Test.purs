@@ -18,8 +18,16 @@
 -- | `resolve`, and there is no separate "expect these commands" step.
 module Petal.Test
   ( Scenario
+  , Session
+  , Observation
+  , start
+  , step
+  , observe
+  , finish
+  , resolveAt
   , Check(..)
   , run
+  , runConcurrent
   , evaluate
   , send
   , resolve
@@ -43,7 +51,7 @@ import Control.Alt ((<|>))
 import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (ReaderT, asks, runReaderT)
-import Control.Monad.State (State, get, gets, modify_, runState)
+import Control.Monad.State (State, gets, modify_, runState)
 import Data.Array as Array
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
@@ -68,9 +76,55 @@ derive newtype instance bindScenario :: Bind (Scenario model message)
 derive newtype instance monadScenario :: Monad (Scenario model message)
 
 type Env model message =
-  { update :: message -> Update model message Unit, view :: model -> Html message }
+  { update :: message -> Update model message Unit
+  , view :: model -> Html message
+  , mode :: Mode
+  }
+
+-- | `Serial` rejects a new message while a command is pending; `Overlapping` allows it.
+data Mode = Serial | Overlapping
+
+derive instance eqMode :: Eq Mode
 
 type World model message = { model :: model, pending :: Array (Command message) }
+
+-- | A pure, resumable scenario. Unlike `run`, a session permits interactions
+-- | while commands are pending, so callers can explore response orderings.
+newtype Session model message = Session { env :: Env model message, world :: World model message }
+
+type Observation = { view :: String, pending :: Array String }
+
+start :: forall model message. Program model message -> Session model message
+start = begin Overlapping
+
+begin :: forall model message. Mode -> Program model message -> Session model message
+begin mode program =
+  let
+    initial = runUpdate program.init program.model
+  in
+    Session
+      { env: { update: program.update, view: program.view, mode }
+      , world: { model: initial.model, pending: initial.commands }
+      }
+
+-- | Apply a scenario action atomically. A failed action leaves the input session usable.
+step ::
+  forall model message a.
+  Scenario model message a -> Session model message -> Either String (Session model message)
+step (Scenario action) (Session session) =
+  case runState (runExceptT (runReaderT action session.env)) session.world of
+    Tuple (Left problem) _ -> Left problem
+    Tuple (Right _) world -> Right (Session (session { world = world }))
+
+-- | Render the current pure view and list pending commands in resolution order.
+observe :: forall model message. Session model message -> Observation
+observe (Session session) =
+  { view: Locator.snapshot (session.env.view session.world.model)
+  , pending: map Command.describe session.world.pending
+  }
+
+finish :: forall model message. Session model message -> Either String Unit
+finish (Session session) = unresolved session.world.pending
 
 data Check
   = HasText String
@@ -90,17 +144,18 @@ run ::
   MonadThrow Error m => Program model message -> Scenario model message Unit -> m Unit
 run program scenario = either (throwError <<< error) pure (evaluate program scenario)
 
+-- | Run a complete scenario allowing messages while commands are pending.
+-- | All commands must still be resolved before the scenario ends.
+runConcurrent ::
+  forall m model message.
+  MonadThrow Error m => Program model message -> Scenario model message Unit -> m Unit
+runConcurrent program scenario =
+  either (throwError <<< error) pure (step scenario (start program) >>= finish)
+
 -- | The pure form of `run`, for asserting on a failure message.
 evaluate ::
   forall model message. Program model message -> Scenario model message Unit -> Either String Unit
-evaluate program (Scenario body) =
-  let
-    start = runUpdate program.init program.model
-    Tuple result final =
-      runState (runExceptT (runReaderT body { update: program.update, view: program.view }))
-        { model: start.model, pending: start.commands }
-  in
-    result *> unresolved final.pending
+evaluate program scenario = step scenario (begin Serial program) >>= finish
 
 send :: forall model message. message -> Scenario model message Unit
 send = deliver "when you sent a new Message"
@@ -109,30 +164,30 @@ send = deliver "when you sent a new Message"
 -- | when none is pending, or when several are and `resolveFor` is needed.
 resolve ::
   forall model message args result. Definition args result -> result -> Scenario model message Unit
-resolve definition result = do
-  pending <- Scenario (gets _.pending)
-  case Array.filter (Command.isFrom definition) pending of
-    [] -> failure (notPending definition pending)
-    [ _ ] -> settle (Command.isFrom definition) definition result
-    many -> failure
-      ( "I tried to resolve "
-          <> Command.definitionName definition
-          <> " but several are pending:\n\n"
-          <> listCommands many
-          <> "\n\nUse resolveFor with the arguments of the one you mean."
-      )
+resolve definition =
+  resolveOnly (Command.isFrom definition) "resolveFor with the arguments" definition
 
 -- | Resolve the pending command from `definition` issued with `args`.
 resolveFor ::
   forall model message args result.
   Eq args => Definition args result -> args -> result -> Scenario model message Unit
-resolveFor definition args result = do
+resolveFor definition args =
+  resolveOnly issuedWith "resolveAt with the pending index" definition
+  where
+  issuedWith commandValue = Command.argumentsFor definition commandValue == Just args
+
+-- | Resolve a specific pending instance by its zero-based index in `observe`.
+-- | Indices refer to the current observation and change when commands settle.
+resolveAt ::
+  forall model message args result.
+  Int -> Definition args result -> result -> Scenario model message Unit
+resolveAt index definition result = do
   pending <- Scenario (gets _.pending)
-  let
-    issuedWith = \commandValue -> Command.argumentsFor definition commandValue == Just args
-  if Array.any issuedWith pending
-  then settle issuedWith definition result
-  else failure (notPending definition pending)
+  case Array.index pending index >>= Command.resolveWith definition result of
+    Nothing -> failure ("No matching Command at pending index " <> show index <> ".")
+    Just message -> do
+      Scenario (modify_ _ { pending = fromMaybe pending (Array.deleteAt index pending) })
+      apply message
 
 -- | Compare a projection of the model: `expectModel _.search "char"`.
 expectModel ::
@@ -273,37 +328,47 @@ expect locator check = do
 deliver :: forall model message. String -> message -> Scenario model message Unit
 deliver context message = do
   pending <- Scenario (gets _.pending)
-  unless (Array.null pending) $ failure
+  mode <- Scenario (asks _.mode)
+  if mode == Serial && not (Array.null pending) then failure
     ( "I found unresolved Commands "
         <> context
         <> ":\n\n"
         <> listCommands pending
         <> "\n\nResolve every pending Command before the next Message."
     )
-  apply message
+  else apply message
 
 apply :: forall model message. message -> Scenario model message Unit
 apply message = do
   update <- Scenario (asks _.update)
   Scenario $ modify_ \world ->
     let
-      step = runUpdate (update message) world.model
+      next = runUpdate (update message) world.model
     in
-      { model: step.model, pending: world.pending <> step.commands }
+      { model: next.model, pending: world.pending <> next.commands }
 
-settle ::
+-- | Resolve the one pending command `chosen` selects, naming `alternative` when several match.
+resolveOnly ::
   forall model message args result.
-  (Command message -> Boolean) -> Definition args result -> result -> Scenario model message Unit
-settle chosen definition result = do
-  world <- Scenario get
-  case Array.findIndex chosen world.pending of
-    Nothing -> failure (notPending definition world.pending)
-    Just index -> case Array.index world.pending index >>= Command.resolveWith definition result of
-      Nothing -> failure (notPending definition world.pending)
-      Just message -> do
-        Scenario
-          (modify_ _ { pending = fromMaybe world.pending (Array.deleteAt index world.pending) })
-        apply message
+  (Command message -> Boolean) ->
+  String ->
+  Definition args result ->
+  result ->
+  Scenario model message Unit
+resolveOnly chosen alternative definition result = do
+  pending <- Scenario (gets _.pending)
+  case Array.filter chosen pending, Array.findIndex chosen pending of
+    [ _ ], Just index -> resolveAt index definition result
+    [], _ -> failure (notPending definition pending)
+    many, _ -> failure
+      ( "I tried to resolve "
+          <> Command.definitionName definition
+          <> " but several are pending:\n\n"
+          <> listCommands many
+          <> "\n\nUse "
+          <> alternative
+          <> " of the one you mean."
+      )
 
 notPending ::
   forall message args result. Definition args result -> Array (Command message) -> String
@@ -336,12 +401,19 @@ listCommands = case _ of
 locate :: forall model message. Locator -> Scenario model message (Match message)
 locate locator = do
   found <- findAll locator
-  case Array.head found of
-    Just match -> pure match
-    Nothing -> failure
+  case found of
+    [ match ] -> pure match
+    [] -> failure
       ( "I could not find an element matching "
           <> Locator.describe locator
           <> ".\n\nCheck that the view renders it in the current state."
+      )
+    _ -> failure
+      ( "Found "
+          <> show (Array.length found)
+          <> " elements matching "
+          <> Locator.describe locator
+          <> ". Use within or nth to choose one."
       )
 
 findAll :: forall model message. Locator -> Scenario model message (Array (Match message))

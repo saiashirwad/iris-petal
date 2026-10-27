@@ -131,7 +131,35 @@ it "caches a detail and retries a failure" do
 
 The last selection uses the cached result. If it issued another command, the scenario would fail because that command was left unresolved.
 
-Commands are not executed in a scenario. Instead, supply their results with `resolve definition result`, or `resolveFor definition args result` when the same definition has multiple pending commands. Scenarios start after `init`, must resolve pending commands before sending another message or interaction, and fail if commands remain unresolved at the end. The [Pokédex tests](examples/test/Test/Pokedex.purs) also show pagination and model assertions; the [parent test](examples/test/Test/Parent.purs) exercises a composed component.
+Commands are not executed in a scenario. Instead, supply their results with `resolve definition result`, or `resolveFor definition args result` when the same definition has multiple pending commands. Scenarios start after `init`, must resolve pending commands before sending another message or interaction, and fail if commands remain unresolved at the end. Locators used for an interaction or a single-element expectation must match exactly one element; use `within` or `nth` to choose one. The [Pokédex tests](examples/test/Test/Pokedex.purs) also show pagination and model assertions; the [parent test](examples/test/Test/Parent.purs) exercises a composed component.
+
+### Explore a program step by step
+
+`Test.start` creates an in-memory session. `step` applies a scenario action and returns the new session, or an error that leaves the input session usable. `observe` summarizes the view and lists pending commands in order, and `finish` checks that none remain. Unlike `Test.run`, a session accepts interactions while commands are pending; `runConcurrent` runs a complete scenario the same way. `resolveAt` resolves the pending command at a zero-based index in the latest observation, which tells apart requests with identical arguments.
+
+The Pokédex has a fixture-backed JSON-lines driver for people and agents to try this:
+
+```sh
+iris run -q -p examples --main Example.Pokedex.Explore
+```
+
+It prints an observation, then reads one JSON object per line. These lines reproduce an out-of-order response:
+
+```json
+{"op":"resolve","index":0,"fixture":"first-page"}
+{"op":"click","name":"Bulbasaur"}
+{"op":"click","name":"Charmander"}
+{"op":"resolve","index":1,"fixture":"charmander"}
+{"op":"resolve","index":0,"fixture":"bulbasaur"}
+{"op":"finish"}
+{"op":"trace"}
+```
+
+Each successful action prints the new observation. `trace` prints the successful actions so far; feed them back one per line to replay them in a fresh session. The other operations are `observe`, `reset`, and `fill` with a `value`; `detail-error` is a fixture for a failed detail request. The [regression test](examples/test/Test/Pokedex.purs) records the intended behavior as assertions; a trace is only an interaction log.
+
+The composed counter runs on the same driver with `--main Example.Parent.Explore`; send `{"op":"click","name":"+"}`. It has no fixtures or text input, and its hidden `reachedTen` flag is not part of the observation; the [parent test](examples/test/Test/Parent.purs) checks it directly.
+
+The view summary follows Petal's locator semantics and is not a browser accessibility tree.
 
 The test runner interprets Petal's HTML and event handlers in memory. It is useful for testing application behavior, but it does not run a browser or replace browser tests for DOM, layout, or integration behavior.
 

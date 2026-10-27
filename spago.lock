@@ -15,8 +15,12 @@
             "foldable-traversable",
             "integers",
             "maybe",
+            "node-event-emitter",
+            "node-process",
+            "node-readline",
             "petal",
             "prelude",
+            "refs",
             "strings",
             "transformers"
           ]
@@ -1459,6 +1463,26 @@
         "strings"
       ]
     },
+    "node-readline": {
+      "type": "registry",
+      "version": "8.1.2",
+      "integrity": "sha256-ZX8RwzlWzRsGg/xRYAa0Je5cnXEc/WYh4LdHl4tnLes=",
+      "dependencies": [
+        "aff",
+        "datetime",
+        "effect",
+        "either",
+        "exceptions",
+        "foreign",
+        "node-event-emitter",
+        "node-process",
+        "node-streams",
+        "options",
+        "prelude",
+        "refs",
+        "unsafe-coerce"
+      ]
+    },
     "node-streams": {
       "type": "registry",
       "version": "9.0.2",
@@ -1536,6 +1560,20 @@
         "partial",
         "prelude",
         "strings",
+        "tuples"
+      ]
+    },
+    "options": {
+      "type": "registry",
+      "version": "7.0.0",
+      "integrity": "sha256-q/E8Hvdn1crgoyBQeZ/b83vVprlFBSIwtb6twt3KQJU=",
+      "dependencies": [
+        "contravariant",
+        "foreign",
+        "foreign-object",
+        "maybe",
+        "newtype",
+        "prelude",
         "tuples"
       ]
     },

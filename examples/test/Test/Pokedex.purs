@@ -48,6 +48,17 @@ charmander =
   , stats: [ { name: "hp", value: 39 }, { name: "attack", value: 52 } ]
   }
 
+bulbasaurDetail :: Pokemon
+bulbasaurDetail =
+  { id: 1
+  , name: "bulbasaur"
+  , height: 7
+  , weight: 69
+  , types: [ "grass" ]
+  , sprite: Nothing
+  , stats: []
+  }
+
 spec :: Spec Unit
 spec = describe "Pokédex" do
   it "loads pages from the start until the last cursor" do
@@ -80,6 +91,17 @@ spec = describe "Pokédex" do
       resolve fetchPokemonDetail (Right charmander)
       expectPresent (named Heading "Charmander")
       expect (role Article) (ContainsText "Fire")
+
+  it "keeps the latest selection when an earlier request finishes last" do
+    Test.runConcurrent program do
+      resolve fetchPokemonPage (Right { items: [ bulbasaur, charmanderSummary ], next: Nothing })
+      click (named Button "Bulbasaur")
+      click (named Button "Charmander")
+      resolveFor fetchPokemonDetail "charmander" (Right charmander)
+      expectPresent (named Heading "Charmander")
+      resolveFor fetchPokemonDetail "bulbasaur" (Right bulbasaurDetail)
+      expectPresent (named Heading "Charmander")
+      expectAbsent (named Heading "Bulbasaur")
 
   it "says when no Pokémon match" do
     Test.run program do

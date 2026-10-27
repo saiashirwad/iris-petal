@@ -9,10 +9,14 @@ package:
     - effect
     - either
     - foldable-traversable
-    - petal
     - integers
     - maybe
+    - node-event-emitter
+    - node-process
+    - node-readline
+    - petal
     - prelude
+    - refs
     - strings
     - transformers
   run:

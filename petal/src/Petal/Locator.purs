@@ -26,6 +26,7 @@ module Petal.Locator
   , isChecked
   , accessibleName
   , accessibleDescription
+  , snapshot
   )
   where
 
@@ -34,9 +35,30 @@ import Prelude
 import Control.Alt ((<|>))
 import Data.Array as Array
 import Data.Foldable (any, elem, intercalate)
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.String as Str
 import Petal.Html (Attribute(..), Element, Html(..), Role(..), roleName)
+
+-- | A compact semantic summary of the roles Petal's locator model recognizes.
+-- | This describes the pure view, not a browser accessibility tree.
+snapshot :: forall message. Html message -> String
+snapshot root = intercalate "\n" (Array.mapMaybe summarize (matches root))
+  where
+  summarize { element } = do
+    roleValue <- roleOf element
+    let
+      name = nonEmpty (accessibleName root element)
+      text =
+        if isNothing name && Array.elem roleValue [ Paragraph, Status, Alert ]
+        then nonEmpty (textOf element)
+        else Nothing
+      part prefix = maybe "" (\value -> prefix <> show value)
+    pure $ roleName roleValue
+      <> part " " name
+      <> part " text=" text
+      <> part " value=" (attribute "value" element)
+      <> (if isDisabled element then " disabled" else "")
+  nonEmpty value = if Str.null value then Nothing else Just value
 
 data Locator
   = ByRole Role (Maybe String)

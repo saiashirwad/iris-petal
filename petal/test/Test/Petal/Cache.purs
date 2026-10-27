@@ -70,6 +70,14 @@ spec = describe "Query and Pagination" do
       resolve fetchEntry (Right 2)
       expectModel (entry "a") (Success 2)
 
+  it "ignores an older response for the same key after refresh" do
+    Test.runConcurrent program do
+      send (Load "a")
+      send (Refresh "a")
+      Test.resolveAt 1 fetchEntry (Right 2)
+      Test.resolveAt 0 fetchEntry (Right 1)
+      expectModel (entry "a") (Success 2)
+
   it "appends pages and stops after the last one" do
     Test.run program do
       send More

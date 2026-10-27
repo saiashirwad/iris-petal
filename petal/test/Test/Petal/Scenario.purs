@@ -3,7 +3,7 @@ module Test.Petal.Scenario (spec, failsWith) where
 import Prelude
 
 import Control.Monad.State.Class (modify_)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.String as Str
 import Effect.Aff (Aff)
 import Petal (Program, perform)
@@ -13,7 +13,7 @@ import Petal.Locator (named, role)
 import Petal.Test (Check(..), click, evaluate, expect, expectModel, resolve, resolveFor, send)
 import Petal.Test as Test
 import Test.Spec (Spec, describe, it)
-import Test.Spec.Assertions (fail)
+import Test.Spec.Assertions (fail, shouldEqual)
 
 data Message = Pinged | Ponged String
 
@@ -73,3 +73,14 @@ spec = describe "Scenario" do
     failsWith "different Definition value" $ evaluate program do
       send Pinged
       resolveFor pingAgain "a" "A"
+
+  it "steps a session, preserves it after a failure, and settles identical instances by index" do
+    let
+      pendingOf = map (_.pending <<< Test.observe)
+      twice = Test.step (send Pinged *> send Pinged) (Test.start program)
+      settled = twice >>= Test.step (Test.resolveAt 2 ping "second")
+    pendingOf twice `shouldEqual` Right [ "Ping \"a\"", "Ping \"b\"", "Ping \"a\"", "Ping \"b\"" ]
+    failsWith "several are pending" (void (twice >>= Test.step (resolveFor ping "a" "A")))
+    pendingOf settled `shouldEqual` Right [ "Ping \"a\"", "Ping \"b\"", "Ping \"b\"" ]
+    failsWith "unresolved Commands" (settled >>= Test.finish)
+    either fail pure (void (settled >>= Test.step (expectModel _.pongs [ "second" ])))
