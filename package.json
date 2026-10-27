@@ -1,5 +1,5 @@
 {
-  "name": "petal",
+  "name": "iris-petal",
   "private": true,
   "type": "module",
   "scripts": {

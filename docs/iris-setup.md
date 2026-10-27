@@ -29,9 +29,9 @@ installer verifies the release attestation. `iris self update` upgrades in place
 This workspace was created with:
 
 ```sh
-mkdir petal
-cd petal
-iris new --name petal
+mkdir iris-petal
+cd iris-petal
+iris new --name iris-petal
 ```
 
 `iris new` writes `spago.yaml`, `src/Main.purs`, `test/Test/Main.purs`, and a
