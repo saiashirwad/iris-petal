@@ -13,6 +13,11 @@ try {
   const beforeHeight = (await detailPanel.boundingBox())?.height ?? 0;
   const beforeScroll = await page.evaluate(() => window.scrollY);
 
+  const charmanderCard = page.getByRole("button", { name: /charmander/i });
+  await charmanderCard.evaluate((node) => {
+    node.dataset.smokeMark = "kept";
+  });
+
   const search = page.getByRole("searchbox", { name: "Search Pokémon" });
   await search.fill("char");
 
@@ -24,6 +29,9 @@ try {
   await page.getByRole("button", { name: /charmander/i }).waitFor();
   if ((await page.getByRole("button", { name: /bulbasaur/i }).count()) !== 0) {
     throw new Error("Bulbasaur should be filtered out by the search");
+  }
+  if ((await charmanderCard.getAttribute("data-smoke-mark")) !== "kept") {
+    throw new Error("the keyed Charmander card was recreated instead of moved by the filter");
   }
 
   await page.route("**/pokeapi.co/api/v2/pokemon/charmander", async (route) => {
@@ -60,7 +68,7 @@ try {
   await page.getByText("All 151 Pokémon loaded.").waitFor({ timeout: 15000 });
 
   console.log(
-    `Pokedex smoke passed: list, focus, filter, detail, pagination, stable detail panel (${afterHeight}px)`,
+    `Pokedex smoke passed: list, focus, keyed filter, detail, pagination, stable detail panel (${afterHeight}px)`,
   );
 } finally {
   await browser.close();
