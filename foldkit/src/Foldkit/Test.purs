@@ -53,7 +53,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Exception (Error, error)
 import Foldkit (Program, Update, runUpdate)
 import Foldkit.Command (Command, Definition)
-import Foldkit.Command as Command
+import Foldkit.Command.Internal as Command
 import Foldkit.Html (Attribute(..), Element, Html, KeyEvent)
 import Foldkit.Locator (Locator, Match)
 import Foldkit.Locator as Locator

@@ -23,7 +23,7 @@ import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Foldkit (Program, runUpdate)
 import Foldkit.Command (Command)
-import Foldkit.Command as Command
+import Foldkit.Command.Internal as Command
 import Foldkit.Html (Attribute(..), Element, Html(..), KeyEvent, roleName)
 
 foreign import data Node :: Type

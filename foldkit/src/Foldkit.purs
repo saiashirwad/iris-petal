@@ -14,7 +14,7 @@ import Control.Monad.State.Class (class MonadState)
 import Data.Symbol (class IsSymbol)
 import Data.Tuple (Tuple(..))
 import Foldkit.Command (Command, Definition)
-import Foldkit.Command as Command
+import Foldkit.Command.Internal as Command
 import Foldkit.Html (Html)
 import Prim.Row as Row
 import Record as Record
