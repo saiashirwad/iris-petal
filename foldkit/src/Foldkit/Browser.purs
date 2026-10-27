@@ -119,8 +119,6 @@ patchPositional send parent old new = do
   for_ (Array.drop (Array.length old) new) \child -> createNode send child >>= appendChild parent
   for_ (Array.drop (Array.length new) nodes) (removeChild parent)
 
--- | Reuse each keyed old node whose key and tag reappear, moving it into its
--- | new index. Unkeyed children and keys seen twice get fresh nodes.
 patchKeyed ::
   forall message.
   Dispatch message -> Node -> Array (Html message) -> Array (Html message) -> Effect Unit

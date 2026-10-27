@@ -1,5 +1,3 @@
--- | A Pokédex over PokéAPI: an infinitely scrolling list of the first 151,
--- | client-side search, and a cached detail panel.
 module Example.Pokedex
   ( Model
   , Message(..)
@@ -123,7 +121,6 @@ update = case _ of
 loadMore :: Update Model Message Unit
 loadMore = zoom @"list" GotPage (Pagination.loadMore fetchPokemonPage)
 
--- | The cursor is the offset of the next page; `Nothing` is the first page.
 fetchPokemonPage :: Definition (Maybe Int) (Either HttpError (Page Int PokemonSummary))
 fetchPokemonPage = define "FetchPokemonPage" \cursor -> do
   let
@@ -210,8 +207,6 @@ viewList model = case Pagination.status model.list, Pagination.items model.list 
         , viewListEnd status (Array.length summaries)
         ]
 
--- | The sentinel's `onVisible` is attached only while another page can load,
--- | so it fires again each time loading finishes with the sentinel in view.
 viewListEnd :: Status HttpError -> Int -> Html Message
 viewListEnd status loaded = case status of
   HasMore -> div [ class_ "load-more", onVisible ReachedListEnd ] [ text "Scroll for more" ]

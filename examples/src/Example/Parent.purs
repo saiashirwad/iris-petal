@@ -1,5 +1,3 @@
--- | Composition: the parent stores the child's model in a field, runs the
--- | child's `update` there with `zoom`, and handles its out-message inline.
 module Example.Parent (Model, Message(..), update, view, program) where
 
 import Prelude

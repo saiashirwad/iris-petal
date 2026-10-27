@@ -1,5 +1,3 @@
--- | A counter that tells its parent when it reaches ten. The out-message is
--- | `update`'s return value; a standalone `program` discards it.
 module Example.Counter
   ( Model
   , Message(..)

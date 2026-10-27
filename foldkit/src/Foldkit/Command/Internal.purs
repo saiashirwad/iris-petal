@@ -1,5 +1,3 @@
--- | The command kernel shared by `Foldkit`, `Foldkit.Browser`, and
--- | `Foldkit.Test`. Applications import `Foldkit.Command` instead.
 module Foldkit.Command.Internal
   ( Definition
   , Command
@@ -24,8 +22,6 @@ import Unsafe.Reference (unsafeRefEq)
 newtype Definition args result =
   Definition { name :: String, run :: args -> Aff result, showArgs :: args -> String }
 
--- | `args` and `result` are erased here. `isFrom` is the only way to recover
--- | them, and it checks definition identity first.
 newtype Command message =
   Command { definition :: Definition Erased Erased, args :: Erased, toMessage :: Erased -> message }
 
@@ -63,9 +59,6 @@ run (Command command) =
   in
     command.toMessage <$> definition.run command.args
 
--- | Reference equality on the definition. A monomorphic top-level definition
--- | is one JavaScript object, so equal references imply equal `args` and
--- | `result` types. That is the soundness argument for every coercion below.
 isFrom :: forall args result message. Definition args result -> Command message -> Boolean
 isFrom definition (Command command) = unsafeRefEq (erase definition) command.definition
 

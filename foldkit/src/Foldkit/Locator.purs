@@ -223,7 +223,6 @@ matchesRole target name root element = roleOf element
   == Just target
   && maybe true (\wanted -> accessibleName root element == normalize wanted) name
 
--- | An explicit `role_` wins; otherwise the tag's implicit role.
 roleOf :: forall message. Element message -> Maybe Role
 roleOf element = explicit <|> implicitRole element
   where

@@ -1,5 +1,3 @@
--- | Prints the server-rendered shell: the initial model's view, before the
--- | first page loads.
 module Example.Pokedex.Server (main) where
 
 import Prelude
