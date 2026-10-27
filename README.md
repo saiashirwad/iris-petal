@@ -1,131 +1,130 @@
 # Petal
 
-The Elm architecture for PureScript, compiled with Iris. A program is a model,
-a message type, an `update` written as a `do` block, and a pure `view`.
-Commands are inert data, so a test drives the real program, resolves each
-command with a value, and never runs an effect or touches a DOM.
+Petal is a PureScript library for building and testing user interfaces. An application is a model, an update function, and a view. Updates change the model and describe work to perform; the browser runtime runs that work and sends its results back as messages. The same program can be exercised in memory without a browser or network.
 
-The demo is a Pokédex over [PokéAPI](https://pokeapi.co): infinite scroll to
-151, client-side search that keeps input focus, and a cached detail panel.
+```text
+model ──view──> HTML ──interaction──> message
+  ↑                                    │
+  └────────────── update ──────────────┘
+                    │
+                 commands ──result──> message
+```
 
-## A counter
+## A small program
+
+This counter has no effects: clicking the button sends `Increment`, `update` changes the model, and `view` renders the new count.
 
 ```purescript
-module Counter where
+module Main where
 
 import Prelude
 
 import Control.Monad.State.Class (modify_)
+import Effect (Effect)
 import Petal (Program, Update)
+import Petal.Browser as Browser
 import Petal.Html (Html, button, div, onClick, p, text)
 
 type Model = { count :: Int }
 
-data Message = Increment | Decrement
+data Message = Increment
 
 update :: Message -> Update Model Message Unit
-update = case _ of
-  Increment -> modify_ \model -> model { count = model.count + 1 }
-  Decrement -> modify_ \model -> model { count = model.count - 1 }
+update Increment = modify_ \model -> model { count = model.count + 1 }
 
 view :: Model -> Html Message
 view model = div []
-  [ button [ onClick Decrement ] [ text "-" ]
-  , p [] [ text (show model.count) ]
+  [ p [] [ text (show model.count) ]
   , button [ onClick Increment ] [ text "+" ]
   ]
 
 program :: Program Model Message
-program = { model: { count: 0 }, init: pure unit, update, view }
+program =
+  { model: { count: 0 }
+  , init: pure unit
+  , update
+  , view
+  }
+
+main :: Effect Unit
+main = Browser.mount "root" program
 ```
 
-Mount it in the browser with `Petal.Browser.mount "root" program`, or render
-it on a server with `Petal.Render.renderToString (view program.model)`.
+The host page needs an element with `id="root"` and a JavaScript entry point that calls the compiled `Main.main`. `init` is an update run once at startup; use it to issue initial commands or change the initial model. The browser runtime renders the view, patches the DOM after updates, and runs commands asynchronously.
 
 ## Commands
 
-Define a command once, at the top level. Issue it from `update` with
-`perform`, naming the message its result becomes:
+A command definition names an effect and provides an `Aff` runner. Define it at the top level, then issue it from an update with `perform`:
 
 ```purescript
-fetchPokemon :: Definition String (Either HttpError Pokemon)
-fetchPokemon = define "FetchPokemon" \name ->
-  Http.sendJson decodePokemon (Http.get ("https://pokeapi.co/api/v2/pokemon/" <> name))
+import Data.Either (Either)
+import Petal (perform)
+import Petal.Command (Definition, define)
+import Petal.Http (HttpError)
+import Petal.Http as Http
 
-update = case _ of
-  Selected name -> perform fetchPokemon name GotPokemon
-  GotPokemon result -> modify_ _ { pokemon = result }
+fetchPokemonDetail :: Definition String (Either HttpError Pokemon)
+fetchPokemonDetail = define "FetchPokemonDetail" \name ->
+  Http.sendJson decodePokemon
+    (Http.get ("https://pokeapi.co/api/v2/pokemon/" <> name))
+
+-- Inside an update branch:
+perform fetchPokemonDetail name GotDetail
 ```
 
-## Composition
+Here `GotDetail` turns the result into a message handled by the program. `Pokemon`, `decodePokemon`, and that message constructor belong to the application; a complete example is in [Example.Pokedex](examples/src/Example/Pokedex.purs). Keep definitions at the top level: tests identify commands by the definition value, not its name.
 
-A child is a model, a message type, and an `update`. The parent keeps the
-child's model in a record field and runs the child there with `zoom`, naming
-the field with a type application and wrapping the child's messages:
+`Update model message a` is a state transition that also collects commands. It implements `MonadState`, so updates can use operations such as `get`, `modify_`, and `put`. `runUpdate` exposes the resulting model, commands, and return value for direct testing. For nested models, `zoom` runs a child update on a record field and maps its messages into the parent.
+
+## Testing a program
+
+`Petal.Test` runs scenarios against the program's pure HTML tree. Locate controls by their accessible role or label, interact with them, and check what the view shows. This test uses the [counter example](examples/src/Example/Counter.purs):
 
 ```purescript
-update = case _ of
-  GotCounter message -> do
-    out <- zoom @"counter" GotCounter (Counter.update message)
-    for_ out \ReachedTen -> modify_ _ { reachedTen = true }
+import Petal.Html (Role(..))
+import Petal.Locator (named, role)
+import Petal.Test (Check(..), click, expect)
+import Petal.Test as Test
 
-view model = map GotCounter (Counter.view model.counter)
+-- In a Test.Spec test:
+Test.run Counter.program do
+  click (named Button "+")
+  click (named Button "+")
+  expect (role Paragraph) (HasText "2")
 ```
 
-A child reports to its parent through `update`'s return value, here
-`Update Counter.Model Counter.Message (Maybe OutMessage)`. There is no
-configuration record and no out-message field.
+Commands are not executed in a scenario. Instead, supply their results with `resolve definition result`, or `resolveFor definition args result` when the same definition has multiple pending commands. Scenarios start after `init`, must resolve pending commands before sending another message or interaction, and fail if commands remain unresolved at the end. See the [Pokédex scenarios](examples/test/Test/Pokedex.purs) for loading, errors, and retries.
 
-The library's two stateful children work the same way. `Petal.Query` is a
-keyed cache of `AsyncData` and `Petal.Pagination` is a cursor-paged list:
+The test runner interprets Petal's HTML and event handlers in memory. It is useful for testing application behavior, but it does not run a browser or replace browser tests for DOM, layout, or integration behavior.
 
-```purescript
-SelectedPokemon name -> zoom @"details" GotDetail (Query.ensure fetchPokemonDetail name)
-GotDetail message -> zoom @"details" GotDetail (Query.update message)
-ReachedListEnd -> zoom @"list" GotPage (Pagination.loadMore fetchPokemonPage)
-GotPage message -> zoom @"list" GotPage (Pagination.update message)
-```
+## Included modules
 
-## Testing
+| Module | Purpose |
+| --- | --- |
+| `Petal`, `Petal.Command` | Programs, state transitions, commands, and nested updates |
+| `Petal.Html`, `Petal.Browser` | Typed HTML and events; browser mounting and DOM updates |
+| `Petal.Render` | Render an HTML tree to a string |
+| `Petal.Test`, `Petal.Locator` | In-memory scenarios, interactions, and accessible queries |
+| `Petal.Http` | HTTP requests and JSON decoding for command runners |
+| `Petal.AsyncData`, `Petal.Query` | Loading states and a keyed cache with stale-response protection |
+| `Petal.Pagination` | Cursor-based page loading, retry, and accumulated items |
 
-A scenario starts where the program starts and drives it the way a user would:
+## Run this repository
 
-```purescript
-it "shows the selected Pokémon" do
-  Test.run Pokedex.program do
-    resolve fetchPokemonPage (Right { items: [ bulbasaur, charmander ], next: Nothing })
-    fill (label "Search Pokémon") "char"
-    click (named Button "Charmander")
-    resolve fetchPokemonDetail (Right charmanderDetail)
-    expect (role Article) (ContainsText "Fire")
-```
-
-A new message cannot arrive while a command is pending, and a scenario that
-ends with a pending command fails. `resolve` names the command by its
-definition and supplies its result; nothing else about the command leaks into
-the test.
-
-## Layout
-
-```text
-petal/     the library package (src/Petal*, test/ with its own specs)
-examples/    Counter, Parent, and the Pokédex, with their specs
-web/         Vite entry and styles for the Pokédex
-docs/        design rationale, style standard, Iris setup
-```
-
-## Scripts
+The workspace contains the `petal` library and an `examples` package. It uses [Iris](https://iris-lang.com/) and Node.js; the checked-in setup notes list Iris 0.1.13 and Node 22 or newer. See [Iris setup](docs/iris-setup.md) for installation and tooling details.
 
 ```sh
-./scripts/check.sh      # format check, build, test, server render
-npm run dev             # iris watch + Vite on http://localhost:5173
-npm run smoke           # Playwright against the live Pokédex
+iris build              # compile both packages
+iris test               # run library and example tests
+iris run -p examples    # print the server-rendered Pokédex shell
+./scripts/check.sh      # format check, build, tests, and server example
 ```
 
-Requirements: Iris 0.1.13 and Node 22 or newer.
+To run the browser Pokédex locally:
 
-## Documents
+```sh
+npm install
+npm run dev
+```
 
-- [Design rationale](docs/design.md)
-- [Idiomatic PureScript standard](docs/idiomatic-purescript.md)
-- [Iris setup and workflow](docs/iris-setup.md)
+Open <http://localhost:5173/>. The example fetches data from PokéAPI. For the browser smoke test, install Chromium with `npx playwright install chromium`, leave the dev server running, and run `npm run smoke` in another terminal.
