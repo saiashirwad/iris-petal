@@ -6,4 +6,4 @@ cd "$(dirname "$0")/.."
 iris format --check
 iris build
 iris test
-iris run >/dev/null
+iris run -p examples >/dev/null

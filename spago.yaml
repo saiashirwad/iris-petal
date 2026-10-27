@@ -1,28 +1,3 @@
-package:
-  name: iris-foldkit
-  dependencies:
-    - aff
-    - argonaut-codecs
-    - argonaut-core
-    - arrays
-    - console
-    - effect
-    - either
-    - exceptions
-    - ezfetch
-    - foldable-traversable
-    - maybe
-    - ordered-collections
-    - prelude
-    - refs
-    - strings
-    - transformers
-    - url-immutable
-    - tuples
-  test:
-    main: Test.Main
-    dependencies:
-      - assert
 workspace:
   packageSet:
     registry: 81.6.0

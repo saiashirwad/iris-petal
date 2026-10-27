@@ -58,16 +58,17 @@ request URLs.
 ## Build, test, run
 
 ```sh
-iris build          # compile the package
-iris test           # compile and run Test.Main with Node
-iris run            # compile and run Main.main with Node
+iris build              # compile the foldkit and examples packages
+iris test               # run both packages' specs with Node
+iris run -p examples    # print the server-rendered Pokédex shell
 iris format         # format every package's src and test sources in place
 iris format --check # verify formatting
 ```
 
-`iris test` uses `test.main: Test.Main` from `spago.yaml`. The test runner is a
-small `Aff` harness in `Foldkit.Test`; it prints pass/fail lines and sets a
-non-zero exit code when anything fails.
+The workspace has two packages. `foldkit/spago.yaml` is the library and runs
+`Test.Foldkit.Main`. `examples/spago.yaml` depends on it and runs
+`Test.Examples.Main`. Both use `spec` and `spec-node`; the library ships no test
+runner of its own.
 
 `scripts/check.sh` runs the whole gate:
 
@@ -77,9 +78,9 @@ non-zero exit code when anything fails.
 
 It runs `iris format --check`, `iris build`, `iris test`, and `iris run`.
 
-`iris run` prints the server-rendered Pokédex shell. `Main.main` checks whether
-`document` exists. In a browser bundle it starts the Pokédex runtime in `#root`;
-in Node it stays on the SSR path.
+`iris run -p examples` runs `Example.Pokedex.Server`, which prints the
+server-rendered shell. The browser entry is `Example.Pokedex.Browser`, which
+`web/main.js` imports. Neither entry checks which platform it is on.
 
 ## Dev server and hot reload
 
@@ -119,18 +120,14 @@ waits for the detail panel.
 
 ## Build graph
 
-`Main` imports the demo modules and `Foldkit.Runtime`, so `iris build` checks the
-application graph. `Test.Main` imports every test module, so `iris test` checks
-the whole library plus the tests. If a new library module is not reachable from
-either entry point, it is not part of that build until something imports it.
+`iris build` compiles every module in both packages' `src`. `iris test` also
+compiles each package's `test` directory.
 
 PureScript modules that need JavaScript use an FFI file beside the source:
 
 ```text
-src/Foldkit/Runtime.purs
-src/Foldkit/Runtime.js
-src/Foldkit/Test.purs
-src/Foldkit/Test.js
+foldkit/src/Foldkit/Browser.purs
+foldkit/src/Foldkit/Browser.js
 ```
 
 Iris compiles the `.purs` module and links the matching `.js` exports.
@@ -147,9 +144,9 @@ In another terminal, `iris watch query` asks the running watcher about the
 project:
 
 ```sh
-iris watch query signatures Foldkit.Scene
+iris watch query signatures Foldkit.Test
 iris watch query definitions Foldkit.Command
-iris watch query references Foldkit.Story.resolve
+iris watch query references Foldkit.Test.resolve
 iris watch query diagnostics
 ```
 
@@ -164,7 +161,6 @@ The project does not carry a separate formatter configuration.
 
 ## Compiler notes
 
-Iris 0.1.13 sometimes rejects a nested `case` expression inside the Story runner
-with `UnreportedUnknownType`. Rewriting the final check as `maybe` over
-`Simulation.unresolvedError` compiles correctly and is also clearer. The current
-`Foldkit.Story.runStory` uses that form.
+Iris 0.1.13 once rejected a nested `case` expression in a test runner with
+`UnreportedUnknownType`. Rewriting the inner `case` as `maybe` or `either`
+compiled correctly. Prefer that form when the error appears.

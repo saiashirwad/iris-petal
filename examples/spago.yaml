@@ -1,0 +1,24 @@
+package:
+  name: examples
+  dependencies:
+    - aff
+    - argonaut-codecs
+    - argonaut-core
+    - arrays
+    - console
+    - effect
+    - either
+    - foldable-traversable
+    - foldkit
+    - integers
+    - maybe
+    - prelude
+    - strings
+    - transformers
+  run:
+    main: Example.Pokedex.Server
+  test:
+    main: Test.Examples.Main
+    dependencies:
+      - spec
+      - spec-node

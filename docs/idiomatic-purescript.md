@@ -9,15 +9,13 @@ would have designed from the start.
 
 Model the domain with ADTs and records before writing logic.
 
-- Sum types for alternatives: `data AsyncData value error = Idle | Loading | ...`
+- Sum types for alternatives: `data AsyncData error value = NotAsked | Loading (Maybe value) | ...`
 - Records for product data: `type Model = { count :: Int }`
-- Newtypes for identity and invariants: `newtype CommandName = CommandName String`
+- Newtypes for opaque state: `newtype Model key error value = Model (Map key ...)`
 - Separate a definition from an instance when they have different lifetimes:
-  `Definition args result message` and `Command message`, not one callable
-  object that is both.
-- Encode command arguments once in the definition (`EncodeJson args`) and store
-  a structural `Json` payload on the instance. Do not key identity on `Show`
-  text.
+  `Definition args result` and `Command message`. The message function belongs
+  to the instance, so it can close over what the caller knew.
+- A definition's identity is the top-level value itself, not its name.
 
 Do not encode a variant as a string plus optional fields. Do not use a record
 with `Maybe` fields where a sum type says which combinations are legal.
@@ -45,40 +43,32 @@ Every `case` on an ADT is exhaustive. Do not add a wildcard to silence a new
 constructor. The compiler is the checklist.
 
 ```purescript
-update model = case _ of
-  UpdatedZipCode value -> continue model { zipCode = value }
-  SubmittedWeatherForm -> ...
-  SucceededFetchWeather weather -> ...
-  FailedFetchWeather error -> ...
+update = case _ of
+  UpdatedSearch search -> modify_ _ { search = search }
+  SelectedPokemon name -> ...
+  ReachedListEnd -> ...
+  GotPage message -> ...
+  GotDetail message -> ...
 ```
 
 If a wildcard is genuinely total, it should be a named function with a clear
 reason, not a habit.
 
-## 4. Reader for context, State for the simulation, Except for failure
+## 4. One monad per interpreter
 
-The test interpreters use the standard transformers directly:
+`Update model message a` is State over the model plus an append-only list of
+commands. `Foldkit.Test.Scenario` is the standard stack:
 
 ```purescript
-ReaderT environment (ExceptT String (State state))
+ReaderT program (ExceptT String (State world))
 ```
 
-- `ReaderT` carries immutable context: `update`, `view`, locator scope.
-- `State` carries the model, pending commands, and OutMessage.
+- `ReaderT` carries the program's `update` and `view`.
+- `State` carries the model and the pending commands.
 - `ExceptT String` carries the first failure.
 
-Use `local` for scope changes instead of storing a scope in the state.
-
-```purescript
-within locator action = do
-  env <- ask
-  let scoped = ...
-  local (\current -> current { scope = Just scoped }) action
-```
-
-Do not introduce a capability typeclass unless a real helper needs to be
-polymorphic over both interpreters and the constraint pays for itself. The two
-monads already make "no clicking in a Story" a compile error.
+Scoping is a locator (`within parent child`), not reader state. Do not introduce
+a capability typeclass unless a real helper needs it.
 
 ## 5. Standard classes, not bespoke ones
 
@@ -86,23 +76,24 @@ Use `Functor`, `Eq`, `Ord`, `Show`, `MonadState`, `MonadError`, `MonadReader`.
 Do not invent a `MonadTest` class to avoid passing `update`; pass `update` or use
 `ask`.
 
-`Show` belongs at assertion boundaries where the failure prints a value. If a
-model contains a function, `expectModelWith` takes a renderer instead of forcing
-a `Show` instance that cannot exist.
+`Show` belongs at assertion boundaries where the failure prints a value.
+`expectModel` compares a projection of the model, so only the projected value
+needs `Eq` and `Show`.
 
 ## 6. Pure core, effects at the edge
 
-- `Html`, `Locator`, `Command`, `Update`, `Simulation.State` are pure data.
-- `Aff` appears only in `Command.run` and the browser runtime.
+- `Html`, `Locator`, `Command`, and `Update` are pure data or pure functions.
+- `Aff` appears only in command runners and the browser runtime.
 - The test interpreter resolves commands with values; it never runs them.
 - The renderer is a pure fold from `Html` to `String`.
-- HTTP is a `Client` record (`send :: Request -> Aff (Either HttpError Response)`),
-  not a typeclass or a service layer; `pureClient` is the test seam.
-- Caches are explicit model data: `Query` stores `Map key (AsyncData value error, generation)`;
-  `Pagination` stores items, next cursor, status, and generation. The state
-  machine is pure and testable; the command only fetches.
-- FFI is a thin edge: DOM operations in `Foldkit.Runtime.js`, exit code in
-  `Foldkit.Test.js`.
+- HTTP is plain `Aff` functions. Its status and decoding rules are the pure
+  `readJson`, which is what tests call.
+- Caches are opaque child models driven with `zoom`. Their bookkeeping
+  (generations, cursors) is captured by command instances and never reaches a
+  test.
+- FFI is a thin edge: DOM operations in `Foldkit.Browser.js`.
+- `unsafeCoerce` appears only in `Foldkit.Command`, behind a reference
+  identity check.
 
 No hidden mutation, no module-global dispatch stack, no `unsafePerformEffect`.
 
@@ -145,11 +136,11 @@ layout. Do not fight it.
 
 ## 10. Verification
 
-- `iris build` compiles the application graph.
-- `iris test` runs `Test.Main` and exits non-zero on failure.
-- `iris run` prints the server-rendered counter and weather views.
-- New command guarantees get a test: definition vs instance matching, exact
-  multiset, ambiguity, `resolveExact`, pending discipline, and `Scene.send`.
+- `iris build` compiles both workspace packages.
+- `iris test` runs the `foldkit` and `examples` specs and exits non-zero on failure.
+- `iris run -p examples` prints the server-rendered Pokédex shell.
+- New scenario guarantees get a test in `foldkit/test`: ambiguity, pending
+  discipline, unresolved commands, and definition identity.
 - New locators get a test with a real view, not a hand-built `Html` value.
 
 A style refactor is not done until the tests still pass and the diff is smaller

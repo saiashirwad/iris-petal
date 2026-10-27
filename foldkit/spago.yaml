@@ -1,0 +1,28 @@
+package:
+  name: foldkit
+  dependencies:
+    - aff
+    - argonaut-codecs
+    - argonaut-core
+    - arrays
+    - effect
+    - either
+    - exceptions
+    - ezfetch
+    - foldable-traversable
+    - maybe
+    - ordered-collections
+    - prelude
+    - record
+    - refs
+    - strings
+    - transformers
+    - tuples
+    - unsafe-coerce
+    - unsafe-reference
+    - url-immutable
+  test:
+    main: Test.Foldkit.Main
+    dependencies:
+      - spec
+      - spec-node
