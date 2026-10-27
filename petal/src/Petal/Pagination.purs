@@ -8,7 +8,7 @@
 -- |
 -- | At most one page is in flight, so a response can only answer the current
 -- | request. A response that arrives while nothing is loading is ignored.
-module Foldkit.Pagination
+module Petal.Pagination
   ( Model
   , Message
   , Page
@@ -27,8 +27,8 @@ import Control.Monad.State.Class (get, modify_)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Foldkit (Update, perform)
-import Foldkit.Command (Definition)
+import Petal (Update, perform)
+import Petal.Command (Definition)
 
 type Page cursor item = { items :: Array item, next :: Maybe cursor }
 

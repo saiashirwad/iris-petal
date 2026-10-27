@@ -1,10 +1,10 @@
-module Test.Foldkit.View (spec) where
+module Test.Petal.View (spec) where
 
 import Prelude
 
 import Control.Monad.State.Class (modify_)
-import Foldkit (Program)
-import Foldkit.Html
+import Petal (Program)
+import Petal.Html
   ( Role(..)
   , ariaDescribedBy
   , ariaLabel
@@ -26,13 +26,13 @@ import Foldkit.Html
   , value_
   , for_
   )
-import Foldkit.Locator (named, role, within)
-import Foldkit.Locator as Locator
-import Foldkit.Render (renderToString)
-import Foldkit.Test
+import Petal.Locator (named, role, within)
+import Petal.Locator as Locator
+import Petal.Render (renderToString)
+import Petal.Test
   (Check(..), expect, expectAbsent, expectCount, expectModel, expectPresent, fill, submit)
-import Foldkit.Test as Test
-import Test.Foldkit.Scenario (failsWith)
+import Petal.Test as Test
+import Test.Petal.Scenario (failsWith)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 

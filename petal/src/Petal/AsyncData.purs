@@ -1,6 +1,6 @@
 -- | Remote data. `Loading` and `Failure` keep the last good value, if any, so
 -- | a refresh or a failed refresh never drops what the view already shows.
-module Foldkit.AsyncData (AsyncData(..), toMaybe, isLoading) where
+module Petal.AsyncData (AsyncData(..), toMaybe, isLoading) where
 
 import Prelude
 

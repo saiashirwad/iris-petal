@@ -1,11 +1,11 @@
 -- | Accessible queries over the pure `Html` tree: what a user perceives, not
--- | how the view is built. Roles are `Foldkit.Html.Role` constructors, shared
+-- | how the view is built. Roles are `Petal.Html.Role` constructors, shared
 -- | with the `role_` attribute.
 -- |
 -- | Builders (`role`, `named`, `label`, ...) are for tests. The query half
--- | (`findAll`, `accessibleName`, ...) is what `Foldkit.Test` interprets them
+-- | (`findAll`, `accessibleName`, ...) is what `Petal.Test` interprets them
 -- | with.
-module Foldkit.Locator
+module Petal.Locator
   ( Locator
   , role
   , named
@@ -36,7 +36,7 @@ import Data.Array as Array
 import Data.Foldable (any, elem, intercalate)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.String as Str
-import Foldkit.Html (Attribute(..), Element, Html(..), Role(..), roleName)
+import Petal.Html (Attribute(..), Element, Html(..), Role(..), roleName)
 
 data Locator
   = ByRole Role (Maybe String)

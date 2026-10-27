@@ -5,7 +5,7 @@
 -- | Children are matched by `key` when any sibling has one, by position
 -- | otherwise. Every attribute, including `onVisible`, is patched in place, so
 -- | a reused node keeps its focus, selection, and observers.
-module Foldkit.Browser (mount) where
+module Petal.Browser (mount) where
 
 import Prelude
 
@@ -21,10 +21,10 @@ import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
-import Foldkit (Program, runUpdate)
-import Foldkit.Command (Command)
-import Foldkit.Command.Internal as Command
-import Foldkit.Html (Attribute(..), Element, Html(..), KeyEvent, roleName)
+import Petal (Program, runUpdate)
+import Petal.Command (Command)
+import Petal.Command.Internal as Command
+import Petal.Html (Attribute(..), Element, Html(..), KeyEvent, roleName)
 
 foreign import data Node :: Type
 foreign import data DomEvent :: Type

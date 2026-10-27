@@ -4,7 +4,7 @@ import Prelude
 
 import Effect (Effect)
 import Example.Pokedex as Pokedex
-import Foldkit.Browser as Browser
+import Petal.Browser as Browser
 
 main :: Effect Unit
 main = Browser.mount "root" Pokedex.program

@@ -13,9 +13,9 @@
             "effect",
             "either",
             "foldable-traversable",
-            "foldkit",
             "integers",
             "maybe",
+            "petal",
             "prelude",
             "strings",
             "transformers"
@@ -28,8 +28,8 @@
           ]
         }
       },
-      "foldkit": {
-        "path": "foldkit",
+      "petal": {
+        "path": "petal",
         "core": {
           "dependencies": [
             "aff",

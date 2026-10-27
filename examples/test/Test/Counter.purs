@@ -5,11 +5,11 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Example.Counter (Message(..), OutMessage(..))
 import Example.Counter as Counter
-import Foldkit (runUpdate)
-import Foldkit.Html (Role(..))
-import Foldkit.Locator (named, role)
-import Foldkit.Test (Check(..), click, expect)
-import Foldkit.Test as Test
+import Petal (runUpdate)
+import Petal.Html (Role(..))
+import Petal.Locator (named, role)
+import Petal.Test (Check(..), click, expect)
+import Petal.Test as Test
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 

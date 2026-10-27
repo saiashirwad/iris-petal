@@ -34,8 +34,8 @@ module Counter where
 import Prelude
 
 import Control.Monad.State.Class (modify_)
-import Foldkit (Program, Update)
-import Foldkit.Html (Html, button, div, onClick, p, text)
+import Petal (Program, Update)
+import Petal.Html (Html, button, div, onClick, p, text)
 
 type Model = { count :: Int }
 
@@ -56,8 +56,8 @@ view model = div []
 program :: Program Model Message
 program = { model: { count: 0 }, init: pure unit, update, view }
 
--- browser: Foldkit.Browser.mount "root" program
--- server:  Foldkit.Render.renderToString (view program.model)
+-- browser: Petal.Browser.mount "root" program
+-- server:  Petal.Render.renderToString (view program.model)
 ```
 
 ### The real Pokédex (`examples/src/Example/Pokedex.purs`)
@@ -194,23 +194,23 @@ No generation numbers, no `liftedCommand`, no `assertRight` wrapper, no
 ### Module map
 
 ```text
-foldkit/src/Foldkit.purs              Program, Update (monad), Step, perform, zoom, runUpdate
-foldkit/src/Foldkit/Command.purs      Definition, Command, define (+ kernel ops for runtime/test)
-foldkit/src/Foldkit/Html.purs         Html (Element | Text), Attribute, Role, builders
-foldkit/src/Foldkit/AsyncData.purs    AsyncData error value (Functor), toMaybe, isLoading
-foldkit/src/Foldkit/Query.purs        keyed cache child: Model, Message, init, lookup, ensure, refresh, update
-foldkit/src/Foldkit/Pagination.purs   cursor list child: Model, Message, Page, Status, init, items, status, loadMore, update
-foldkit/src/Foldkit/Http.purs         get, post, send, sendJson, readJson, HttpError
-foldkit/src/Foldkit/Render.purs       renderToString
-foldkit/src/Foldkit/Browser.purs(.js) mount: keyed diff, in-place onVisible, focus restore
-foldkit/src/Foldkit/Locator.purs      accessible locators and queries, typed roles
-foldkit/src/Foldkit/Test.purs         Scenario: one monad for model, view, and commands
-foldkit/test/                         library specs (scenario rules, caches, view, http)
+petal/src/Petal.purs              Program, Update (monad), Step, perform, zoom, runUpdate
+petal/src/Petal/Command.purs      Definition, Command, define (+ kernel ops for runtime/test)
+petal/src/Petal/Html.purs         Html (Element | Text), Attribute, Role, builders
+petal/src/Petal/AsyncData.purs    AsyncData error value (Functor), toMaybe, isLoading
+petal/src/Petal/Query.purs        keyed cache child: Model, Message, init, lookup, ensure, refresh, update
+petal/src/Petal/Pagination.purs   cursor list child: Model, Message, Page, Status, init, items, status, loadMore, update
+petal/src/Petal/Http.purs         get, post, send, sendJson, readJson, HttpError
+petal/src/Petal/Render.purs       renderToString
+petal/src/Petal/Browser.purs(.js) mount: keyed diff, in-place onVisible, focus restore
+petal/src/Petal/Locator.purs      accessible locators and queries, typed roles
+petal/src/Petal/Test.purs         Scenario: one monad for model, view, and commands
+petal/test/                         library specs (scenario rules, caches, view, http)
 examples/src/Example/                 Counter, Parent, Pokedex (+ .Browser, .Server entries)
 examples/test/                        example specs
 ```
 
-Two workspace packages. `foldkit` depends on nothing in `examples`; the examples
+Two workspace packages. `petal` depends on nothing in `examples`; the examples
 and their tests compile against the library as a consumer would. The test
 runner is the ecosystem's `spec` + `spec-node`, not a library module.
 
@@ -241,7 +241,7 @@ the scenario finds the pending command from that definition and applies the
 instance's own closure to `x`. Generation, cursor, and wrapping constructor
 never appear in a test.
 
-`unsafeCoerce` is needed, once, inside `Foldkit.Command`. A `Command message`
+`unsafeCoerce` is needed, once, inside `Petal.Command`. A `Command message`
 erases `args` and `result`. To apply its `toMessage` to the test's `result`,
 the library must know the test's `Definition args result` is the one the
 command came from. The check is JavaScript reference equality on the
@@ -317,7 +317,7 @@ so the model itself needs no `Show`. View assertions collapse to
 Interactions: `click`, `fill`, `submit`, `press`, `toggle`. Scoping is a
 locator (`within parent child`), not reader state.
 
-Roles are a `Role` ADT in `Foldkit.Html`, used by both `role_` in views and
+Roles are a `Role` ADT in `Petal.Html`, used by both `role_` in views and
 `role`/`named` in locators. `named "buton" ...` no longer compiles. The
 implicit-role table maps tags to `Maybe Role`.
 
@@ -354,16 +354,16 @@ parameter are deleted; a program that needs flags is a function returning a
 
 ### Interface depth
 
-App authors import `Foldkit (Program, Update, perform, zoom)`,
-`Foldkit.Command (Definition, define)`, `Foldkit.Html`, and the two cache
+App authors import `Petal (Program, Update, perform, zoom)`,
+`Petal.Command (Definition, define)`, `Petal.Html`, and the two cache
 modules' five or six functions each. Behind that: generations, cursors,
 message wrapping, pending-command accounting, and keyed DOM reconciliation.
 Old `Command` exported 23 names; the new one exports 10, of which an app uses 2.
 
 ### What is deleted
 
-`Foldkit.Core`, `Foldkit.Submodel`, `Foldkit.Simulation`, `Foldkit.Story`,
-`Foldkit.Scene`, the library's own test runner (`Foldkit.Test` runner and its
+`Petal.Core`, `Petal.Submodel`, `Petal.Simulation`, `Petal.Story`,
+`Petal.Scene`, the library's own test runner (`Petal.Test` runner and its
 JS), `Main.purs`, `Example.Weather` and its tests, `CommandName`, `define0`,
 `command0`, `Matcher` and its six helpers, `liftResult`, `mapDefinition`,
 `Query.Config`, `Query.receive`, `Query.reset`, `Query.liftedCommand`,
@@ -374,7 +374,7 @@ JS), `Main.purs`, `Example.Weather` and its tests, `CommandName`, `define0`,
 `withBody`, `postJson`, `guardStatus`, `Render.Document`,
 `renderDocumentToString`, `Fragment`, `Empty`, `testId`, `Locator.first`/`last`/
 `roleWith`/`title`/`testId`, and the port-history docs
-(`foldkit-to-iris.md`, `decision-trail.tsv`, `scene-design.md`, `query-cache.md`,
+(`petal-to-iris.md`, `decision-trail.tsv`, `scene-design.md`, `query-cache.md`,
 `http.md`). Library source went from about 3,000 lines to 2,087; the whole
 repo's PureScript from 4,625 to 2,995.
 
@@ -394,9 +394,9 @@ This design (the Opus candidate) is the base.
   `resolve definition result` stays.
 - **Grafted from the judge's review.** The coercion-backed kernel (`make`,
   `run`, `isFrom`, `argumentsFor`, `resolveWith`) moved to
-  `Foldkit.Command.Internal`; `Foldkit.Command` exports only `Definition`,
+  `Petal.Command.Internal`; `Petal.Command` exports only `Definition`,
   `Command`, and `define`. Locator coverage that the rewrite thinned out was
-  restored as `foldkit/test/Test/Foldkit/Locator.purs`. The smoke test now
+  restored as `petal/test/Test/Petal/Locator.purs`. The smoke test now
   proves keyed reuse: it marks the Charmander card's DOM node and fails if the
   search filter recreates it (verified red with the key removed).
 - **Declined.** Sonnet's subscriptions (no example needs one, and they shipped
@@ -472,7 +472,7 @@ Reading Spago workspace configuration...
 
 ✓ Selecting 2 packages to build:
     examples
-    foldkit
+    petal
 
 Downloading dependencies...
 ```
@@ -505,8 +505,6 @@ Summary
 
 ## Open questions and risks
 
-- Is the namespace `Foldkit` still right once the README stops calling this a
-  port? This candidate kept it to avoid churn with no consumer benefit.
 - Should the scenario relax the pending rule for interactions while a command
   is in flight (typing in search while a detail loads is realistic), or is the
   strictness the point?

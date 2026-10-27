@@ -9,7 +9,7 @@ package:
     - effect
     - either
     - foldable-traversable
-    - foldkit
+    - petal
     - integers
     - maybe
     - prelude

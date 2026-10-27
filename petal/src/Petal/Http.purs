@@ -2,7 +2,7 @@
 -- | injectable: a test resolves the command with a value and never reaches
 -- | `send`. The status and decoding rules are the pure `readJson`, which tests
 -- | call directly.
-module Foldkit.Http
+module Petal.Http
   ( Method(..)
   , Request
   , Response

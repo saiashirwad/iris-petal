@@ -13,8 +13,8 @@ import Prelude
 
 import Control.Monad.State.Class (modify, modify_, put)
 import Data.Maybe (Maybe(..))
-import Foldkit (Program, Update)
-import Foldkit.Html (Html, button, div, h1, onClick, p, text)
+import Petal (Program, Update)
+import Petal.Html (Html, button, div, h1, onClick, p, text)
 
 type Model = { count :: Int }
 

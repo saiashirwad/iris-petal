@@ -1,9 +1,9 @@
-module Test.Foldkit.Locator (spec) where
+module Test.Petal.Locator (spec) where
 
 import Prelude
 
-import Foldkit (Program)
-import Foldkit.Html
+import Petal (Program)
+import Petal.Html
   ( Attribute
   , Html
   , Role(..)
@@ -40,11 +40,11 @@ import Foldkit.Html
   , ul
   , value_
   )
-import Foldkit.Locator (altText, displayValue, named, nth, placeholder, textContaining, within)
-import Foldkit.Locator as Locator
-import Foldkit.Test (Check(..), evaluate, expect, expectAbsent, expectCount, expectPresent)
-import Foldkit.Test as Test
-import Test.Foldkit.Scenario (failsWith)
+import Petal.Locator (altText, displayValue, named, nth, placeholder, textContaining, within)
+import Petal.Locator as Locator
+import Petal.Test (Check(..), evaluate, expect, expectAbsent, expectCount, expectPresent)
+import Petal.Test as Test
+import Test.Petal.Scenario (failsWith)
 import Test.Spec (Spec, describe, it)
 
 page :: Html Unit -> Program Unit Unit

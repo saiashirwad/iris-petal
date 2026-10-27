@@ -1,4 +1,4 @@
-# foldkit
+# Petal
 
 The Elm architecture for PureScript, compiled with Iris. A program is a model,
 a message type, an `update` written as a `do` block, and a pure `view`.
@@ -16,8 +16,8 @@ module Counter where
 import Prelude
 
 import Control.Monad.State.Class (modify_)
-import Foldkit (Program, Update)
-import Foldkit.Html (Html, button, div, onClick, p, text)
+import Petal (Program, Update)
+import Petal.Html (Html, button, div, onClick, p, text)
 
 type Model = { count :: Int }
 
@@ -39,8 +39,8 @@ program :: Program Model Message
 program = { model: { count: 0 }, init: pure unit, update, view }
 ```
 
-Mount it in the browser with `Foldkit.Browser.mount "root" program`, or render
-it on a server with `Foldkit.Render.renderToString (view program.model)`.
+Mount it in the browser with `Petal.Browser.mount "root" program`, or render
+it on a server with `Petal.Render.renderToString (view program.model)`.
 
 ## Commands
 
@@ -76,8 +76,8 @@ A child reports to its parent through `update`'s return value, here
 `Update Counter.Model Counter.Message (Maybe OutMessage)`. There is no
 configuration record and no out-message field.
 
-The library's two stateful children work the same way. `Foldkit.Query` is a
-keyed cache of `AsyncData` and `Foldkit.Pagination` is a cursor-paged list:
+The library's two stateful children work the same way. `Petal.Query` is a
+keyed cache of `AsyncData` and `Petal.Pagination` is a cursor-paged list:
 
 ```purescript
 SelectedPokemon name -> zoom @"details" GotDetail (Query.ensure fetchPokemonDetail name)
@@ -108,7 +108,7 @@ the test.
 ## Layout
 
 ```text
-foldkit/     the library package (src/Foldkit*, test/ with its own specs)
+petal/     the library package (src/Petal*, test/ with its own specs)
 examples/    Counter, Parent, and the Pokédex, with their specs
 web/         Vite entry and styles for the Pokédex
 docs/        design rationale, style standard, Iris setup

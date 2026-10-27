@@ -1,6 +1,6 @@
 # Idiomatic PureScript in this repository
 
-This is the style standard for `iris-foldkit`. It exists because a PureScript
+This is the style standard for `petal`. It exists because a PureScript
 port of a TypeScript library can compile while still reading like TypeScript
 with different syntax. The goal is code that a PureScript or Haskell programmer
 would have designed from the start.
@@ -57,7 +57,7 @@ reason, not a habit.
 ## 4. One monad per interpreter
 
 `Update model message a` is State over the model plus an append-only list of
-commands. `Foldkit.Test.Scenario` is the standard stack:
+commands. `Petal.Test.Scenario` is the standard stack:
 
 ```purescript
 ReaderT program (ExceptT String (State world))
@@ -91,8 +91,8 @@ needs `Eq` and `Show`.
 - Caches are opaque child models driven with `zoom`. Their bookkeeping
   (generations, cursors) is captured by command instances and never reaches a
   test.
-- FFI is a thin edge: DOM operations in `Foldkit.Browser.js`.
-- `unsafeCoerce` appears only in `Foldkit.Command.Internal`, behind a
+- FFI is a thin edge: DOM operations in `Petal.Browser.js`.
+- `unsafeCoerce` appears only in `Petal.Command.Internal`, behind a
   reference identity check.
 
 No hidden mutation, no module-global dispatch stack, no `unsafePerformEffect`.
@@ -137,9 +137,9 @@ layout. Do not fight it.
 ## 10. Verification
 
 - `iris build` compiles both workspace packages.
-- `iris test` runs the `foldkit` and `examples` specs and exits non-zero on failure.
+- `iris test` runs the `petal` and `examples` specs and exits non-zero on failure.
 - `iris run -p examples` prints the server-rendered Pokédex shell.
-- New scenario guarantees get a test in `foldkit/test`: ambiguity, pending
+- New scenario guarantees get a test in `petal/test`: ambiguity, pending
   discipline, unresolved commands, and definition identity.
 - New locators get a test with a real view, not a hand-built `Html` value.
 

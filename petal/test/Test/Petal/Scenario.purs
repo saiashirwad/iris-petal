@@ -1,4 +1,4 @@
-module Test.Foldkit.Scenario (spec, failsWith) where
+module Test.Petal.Scenario (spec, failsWith) where
 
 import Prelude
 
@@ -6,12 +6,12 @@ import Control.Monad.State.Class (modify_)
 import Data.Either (Either(..))
 import Data.String as Str
 import Effect.Aff (Aff)
-import Foldkit (Program, perform)
-import Foldkit.Command (Definition, define)
-import Foldkit.Html (Role(..), button, div, onClick, p, text)
-import Foldkit.Locator (named, role)
-import Foldkit.Test (Check(..), click, evaluate, expect, expectModel, resolve, resolveFor, send)
-import Foldkit.Test as Test
+import Petal (Program, perform)
+import Petal.Command (Definition, define)
+import Petal.Html (Role(..), button, div, onClick, p, text)
+import Petal.Locator (named, role)
+import Petal.Test (Check(..), click, evaluate, expect, expectModel, resolve, resolveFor, send)
+import Petal.Test as Test
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (fail)
 

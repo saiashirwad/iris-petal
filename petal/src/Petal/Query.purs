@@ -9,7 +9,7 @@
 -- | Each entry carries a generation so a response from a superseded request
 -- | is dropped. The generation is captured by the command instance, so a test
 -- | resolves the fetch with a plain `Either error value`.
-module Foldkit.Query (Model, Message, init, lookup, ensure, refresh, update) where
+module Petal.Query (Model, Message, init, lookup, ensure, refresh, update) where
 
 import Prelude
 
@@ -18,9 +18,9 @@ import Data.Either (Either(..))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
-import Foldkit (Update, perform)
-import Foldkit.AsyncData (AsyncData(..), toMaybe)
-import Foldkit.Command (Definition)
+import Petal (Update, perform)
+import Petal.AsyncData (AsyncData(..), toMaybe)
+import Petal.Command (Definition)
 
 newtype Model key error value = Model (Map key (Entry error value))
 

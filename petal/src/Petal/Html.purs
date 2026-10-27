@@ -4,7 +4,7 @@
 -- | There is no fragment and no empty node: an element's children are a plain
 -- | array, so conditional content is an array operation and the browser diff
 -- | only ever compares elements and text.
-module Foldkit.Html
+module Petal.Html
   ( Html(..)
   , Element
   , Attribute(..)

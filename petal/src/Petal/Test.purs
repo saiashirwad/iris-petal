@@ -16,7 +16,7 @@
 -- | command is pending, and the scenario fails if any command is still
 -- | pending at the end. So every command `update` issues is accounted for by a
 -- | `resolve`, and there is no separate "expect these commands" step.
-module Foldkit.Test
+module Petal.Test
   ( Scenario
   , Check(..)
   , run
@@ -51,12 +51,12 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as Str
 import Data.Tuple (Tuple(..))
 import Effect.Exception (Error, error)
-import Foldkit (Program, Update, runUpdate)
-import Foldkit.Command (Command, Definition)
-import Foldkit.Command.Internal as Command
-import Foldkit.Html (Attribute(..), Element, Html, KeyEvent)
-import Foldkit.Locator (Locator, Match)
-import Foldkit.Locator as Locator
+import Petal (Program, Update, runUpdate)
+import Petal.Command (Command, Definition)
+import Petal.Command.Internal as Command
+import Petal.Html (Attribute(..), Element, Html, KeyEvent)
+import Petal.Locator (Locator, Match)
+import Petal.Locator as Locator
 
 newtype Scenario model message a =
   Scenario (ReaderT (Env model message) (ExceptT String (State (World model message))) a)

@@ -5,10 +5,10 @@ import Prelude
 import Data.Array as Array
 import Data.Foldable (for_)
 import Example.Parent as Parent
-import Foldkit.Html (Role(..))
-import Foldkit.Locator (named)
-import Foldkit.Test (click, expectModel)
-import Foldkit.Test as Test
+import Petal.Html (Role(..))
+import Petal.Locator (named)
+import Petal.Test (click, expectModel)
+import Petal.Test as Test
 import Test.Spec (Spec, describe, it)
 
 spec :: Spec Unit

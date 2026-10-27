@@ -24,10 +24,10 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as Str
 import Data.String.CodeUnits as StringCode
 import Data.Traversable (traverse)
-import Foldkit (Program, Update, zoom)
-import Foldkit.AsyncData (AsyncData(..), isLoading, toMaybe)
-import Foldkit.Command (Definition, define)
-import Foldkit.Html
+import Petal (Program, Update, zoom)
+import Petal.AsyncData (AsyncData(..), isLoading, toMaybe)
+import Petal.Command (Definition, define)
+import Petal.Html
   ( Html
   , Role(..)
   , alt_
@@ -66,11 +66,11 @@ import Foldkit.Html
   , ul
   , value_
   )
-import Foldkit.Http (HttpError)
-import Foldkit.Http as Http
-import Foldkit.Pagination (Page, Status(..))
-import Foldkit.Pagination as Pagination
-import Foldkit.Query as Query
+import Petal.Http (HttpError)
+import Petal.Http as Http
+import Petal.Pagination (Page, Status(..))
+import Petal.Pagination as Pagination
+import Petal.Query as Query
 
 type PokemonSummary = { name :: String, url :: String }
 

@@ -6,14 +6,14 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Example.Pokedex
   (Message(..), Pokemon, PokemonSummary, fetchPokemonDetail, fetchPokemonPage, program)
-import Foldkit.AsyncData (AsyncData(..))
-import Foldkit.Html (Role(..))
-import Foldkit.Http (HttpError(..))
-import Foldkit.Locator (label, named, role)
-import Foldkit.Pagination (Status(..))
-import Foldkit.Pagination as Pagination
-import Foldkit.Query as Query
-import Foldkit.Test
+import Petal.AsyncData (AsyncData(..))
+import Petal.Html (Role(..))
+import Petal.Http (HttpError(..))
+import Petal.Locator (label, named, role)
+import Petal.Pagination (Status(..))
+import Petal.Pagination as Pagination
+import Petal.Query as Query
+import Petal.Test
   ( Check(..)
   , click
   , expect
@@ -25,7 +25,7 @@ import Foldkit.Test
   , resolveFor
   , send
   )
-import Foldkit.Test as Test
+import Petal.Test as Test
 import Test.Spec (Spec, describe, it)
 
 bulbasaur :: PokemonSummary

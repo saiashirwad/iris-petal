@@ -1,4 +1,4 @@
-module Foldkit.Command.Internal
+module Petal.Command.Internal
   ( Definition
   , Command
   , define

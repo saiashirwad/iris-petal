@@ -24,9 +24,9 @@ export const appendChild = (parent) => (child) => () => {
 };
 
 const disconnectTree = (node) => {
-  if (node.__foldkitIntersectionObserver !== undefined) {
-    node.__foldkitIntersectionObserver.disconnect();
-    delete node.__foldkitIntersectionObserver;
+  if (node.__petalIntersectionObserver !== undefined) {
+    node.__petalIntersectionObserver.disconnect();
+    delete node.__petalIntersectionObserver;
   }
   for (const child of node.children ?? []) {
     disconnectTree(child);
@@ -69,7 +69,7 @@ export const setNodeValue = (node) => (value) => () => {
   node.nodeValue = value;
 };
 
-const listenersKey = "__foldkitListeners";
+const listenersKey = "__petalListeners";
 
 export const setEventListener = (element) => (eventName) => (handler) => () => {
   if (element[listenersKey] === undefined) {
@@ -97,8 +97,8 @@ export const removeEventListener = (element) => (eventName) => () => {
 };
 
 export const setVisibleHandler = (element) => (handler) => () => {
-  element.__foldkitVisible = handler;
-  if (element.__foldkitIntersectionObserver !== undefined) return;
+  element.__petalVisible = handler;
+  if (element.__petalIntersectionObserver !== undefined) return;
   if (typeof IntersectionObserver === "undefined") {
     handler();
     return;
@@ -106,19 +106,19 @@ export const setVisibleHandler = (element) => (handler) => () => {
   const observer = new IntersectionObserver(
     (entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
-        element.__foldkitVisible?.();
+        element.__petalVisible?.();
       }
     },
     { rootMargin: "240px 0px" },
   );
-  element.__foldkitIntersectionObserver = observer;
+  element.__petalIntersectionObserver = observer;
   observer.observe(element);
 };
 
 export const removeVisibleHandler = (element) => () => {
-  element.__foldkitIntersectionObserver?.disconnect();
-  delete element.__foldkitIntersectionObserver;
-  delete element.__foldkitVisible;
+  element.__petalIntersectionObserver?.disconnect();
+  delete element.__petalIntersectionObserver;
+  delete element.__petalVisible;
 };
 
 export const eventValue = (event) => {

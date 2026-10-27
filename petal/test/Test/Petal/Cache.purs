@@ -1,19 +1,19 @@
-module Test.Foldkit.Cache (spec) where
+module Test.Petal.Cache (spec) where
 
 import Prelude
 
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Foldkit (Program, zoom)
-import Foldkit.AsyncData (AsyncData(..))
-import Foldkit.Command (Definition, define)
-import Foldkit.Html (div)
-import Foldkit.Pagination (Page, Status(..))
-import Foldkit.Pagination as Pagination
-import Foldkit.Query as Query
-import Foldkit.Test (expectModel, resolve, resolveFor, send)
-import Foldkit.Test as Test
-import Test.Foldkit.Scenario (failsWith)
+import Petal (Program, zoom)
+import Petal.AsyncData (AsyncData(..))
+import Petal.Command (Definition, define)
+import Petal.Html (div)
+import Petal.Pagination (Page, Status(..))
+import Petal.Pagination as Pagination
+import Petal.Query as Query
+import Petal.Test (expectModel, resolve, resolveFor, send)
+import Petal.Test as Test
+import Test.Petal.Scenario (failsWith)
 import Test.Spec (Spec, describe, it)
 
 data Message

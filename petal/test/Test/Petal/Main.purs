@@ -1,13 +1,13 @@
-module Test.Foldkit.Main where
+module Test.Petal.Main where
 
 import Prelude
 
 import Effect (Effect)
-import Test.Foldkit.Cache as Cache
-import Test.Foldkit.Http as Http
-import Test.Foldkit.Locator as Locator
-import Test.Foldkit.Scenario as Scenario
-import Test.Foldkit.View as View
+import Test.Petal.Cache as Cache
+import Test.Petal.Http as Http
+import Test.Petal.Locator as Locator
+import Test.Petal.Scenario as Scenario
+import Test.Petal.View as View
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner.Node (runSpecAndExitProcess)
 

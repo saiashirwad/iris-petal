@@ -6,8 +6,8 @@ import Control.Monad.State.Class (modify_)
 import Data.Foldable (for_)
 import Example.Counter (OutMessage(..))
 import Example.Counter as Counter
-import Foldkit (Program, Update, zoom)
-import Foldkit.Html (Html)
+import Petal (Program, Update, zoom)
+import Petal.Html (Html)
 
 type Model = { counter :: Counter.Model, reachedTen :: Boolean }
 

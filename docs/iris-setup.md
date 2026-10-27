@@ -29,9 +29,9 @@ installer verifies the release attestation. `iris self update` upgrades in place
 This workspace was created with:
 
 ```sh
-mkdir iris-foldkit
-cd iris-foldkit
-iris new --name iris-foldkit
+mkdir petal
+cd petal
+iris new --name petal
 ```
 
 `iris new` writes `spago.yaml`, `src/Main.purs`, `test/Test/Main.purs`, and a
@@ -50,7 +50,7 @@ modules directly (`Control.Monad.Reader`, `Control.Monad.State`,
 `Control.Monad.Except`, `Control.Monad.Error.Class`), which live in
 `transformers`.
 
-`ezfetch` supplies the typed `Aff` HTTP transport used by `Foldkit.Http`.
+`ezfetch` supplies the typed `Aff` HTTP transport used by `Petal.Http`.
 `argonaut-core`/`argonaut-codecs` decode the PokéAPI payloads.
 `ordered-collections` supplies response headers and `url-immutable` parses
 request URLs.
@@ -58,15 +58,15 @@ request URLs.
 ## Build, test, run
 
 ```sh
-iris build              # compile the foldkit and examples packages
+iris build              # compile the petal and examples packages
 iris test               # run both packages' specs with Node
 iris run -p examples    # print the server-rendered Pokédex shell
 iris format         # format every package's src and test sources in place
 iris format --check # verify formatting
 ```
 
-The workspace has two packages. `foldkit/spago.yaml` is the library and runs
-`Test.Foldkit.Main`. `examples/spago.yaml` depends on it and runs
+The workspace has two packages. `petal/spago.yaml` is the library and runs
+`Test.Petal.Main`. `examples/spago.yaml` depends on it and runs
 `Test.Examples.Main`. Both use `spec` and `spec-node`; the library ships no test
 runner of its own.
 
@@ -126,8 +126,8 @@ compiles each package's `test` directory.
 PureScript modules that need JavaScript use an FFI file beside the source:
 
 ```text
-foldkit/src/Foldkit/Browser.purs
-foldkit/src/Foldkit/Browser.js
+petal/src/Petal/Browser.purs
+petal/src/Petal/Browser.js
 ```
 
 Iris compiles the `.purs` module and links the matching `.js` exports.
@@ -144,9 +144,9 @@ In another terminal, `iris watch query` asks the running watcher about the
 project:
 
 ```sh
-iris watch query signatures Foldkit.Test
-iris watch query definitions Foldkit.Command
-iris watch query references Foldkit.Test.resolve
+iris watch query signatures Petal.Test
+iris watch query definitions Petal.Command
+iris watch query references Petal.Test.resolve
 iris watch query diagnostics
 ```
 

@@ -1,11 +1,11 @@
-module Test.Foldkit.Http (spec) where
+module Test.Petal.Http (spec) where
 
 import Prelude
 
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Either (Either(..))
-import Foldkit.Http (HttpError(..), readJson)
+import Petal.Http (HttpError(..), readJson)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 

@@ -6,16 +6,16 @@
 -- | as a `do` block with `modify_`, `gets`, and `perform`. The `a` is whatever
 -- | the transition returns: `Unit` for an app, and a child's out-message for a
 -- | component that reports to its parent.
-module Foldkit (Program, Update, Step, perform, zoom, runUpdate) where
+module Petal (Program, Update, Step, perform, zoom, runUpdate) where
 
 import Prelude
 
 import Control.Monad.State.Class (class MonadState)
 import Data.Symbol (class IsSymbol)
 import Data.Tuple (Tuple(..))
-import Foldkit.Command (Command, Definition)
-import Foldkit.Command.Internal as Command
-import Foldkit.Html (Html)
+import Petal.Command (Command, Definition)
+import Petal.Command.Internal as Command
+import Petal.Html (Html)
 import Prim.Row as Row
 import Record as Record
 import Type.Proxy (Proxy(..))

@@ -1,5 +1,5 @@
 package:
-  name: foldkit
+  name: petal
   dependencies:
     - aff
     - argonaut-codecs
@@ -22,7 +22,7 @@ package:
     - unsafe-reference
     - url-immutable
   test:
-    main: Test.Foldkit.Main
+    main: Test.Petal.Main
     dependencies:
       - spec
       - spec-node

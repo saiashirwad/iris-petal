@@ -1,11 +1,11 @@
-module Foldkit.Render (renderToString) where
+module Petal.Render (renderToString) where
 
 import Prelude
 
 import Data.Array as Array
 import Data.Foldable (foldMap)
 import Data.String as Str
-import Foldkit.Html (Attribute(..), Html(..), roleName)
+import Petal.Html (Attribute(..), Html(..), roleName)
 
 renderToString :: forall message. Html message -> String
 renderToString = case _ of
