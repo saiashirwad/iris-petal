@@ -380,7 +380,32 @@ repo's PureScript from 4,625 to 2,995.
 
 ## Synthesis decision
 
-Filled in by arena.
+Three runners (Opus, Sonnet, Haiku) each built a compiling candidate in its own
+worktree. A Sonnet cross-judge scored them 27, 24, and 14 out of 30 on call-site
+ergonomics, interface depth, soundness, test DSL, runtime, and completeness.
+This design (the Opus candidate) is the base.
+
+- **Kept over the Sonnet candidate's sound alternative.** Sonnet put the
+  message function on the definition as `lift :: args -> result -> message`,
+  which needs no `unsafeCoerce` but makes every `resolve` pass the arguments
+  and pushes library caches back to exposing their own command values. The
+  reference-identity guard here turns the one realistic misuse (two
+  definitions sharing a name) into a named test failure, so the ergonomic
+  `resolve definition result` stays.
+- **Grafted from the judge's review.** The coercion-backed kernel (`make`,
+  `run`, `isFrom`, `argumentsFor`, `resolveWith`) moved to
+  `Foldkit.Command.Internal`; `Foldkit.Command` exports only `Definition`,
+  `Command`, and `define`. Locator coverage that the rewrite thinned out was
+  restored as `foldkit/test/Test/Foldkit/Locator.purs`. The smoke test now
+  proves keyed reuse: it marks the Charmander card's DOM node and fails if the
+  search filter recreates it (verified red with the key removed).
+- **Declined.** Sonnet's subscriptions (no example needs one, and they shipped
+  without a test), its three-package split (the browser bundle only includes
+  imported modules, so a test package buys nothing yet), its `Html` monoid
+  forest, its slot values pairing label and constructor (an author can write
+  `details = zoom @"details" GotDetail` once if they want that), and its
+  `Found` record. Haiku's candidate kept generation counters and a name-only
+  coercion and contributed nothing the base lacked.
 
 ## Tradeoffs accepted
 
@@ -491,6 +516,6 @@ Summary
 
 ## Next implementation step
 
-Add a runtime-level test for keyed reconciliation (move, insert, remove with
-duplicate keys) under a DOM shim, since the smoke test exercises it only
-through the Pokédex filter.
+Subscriptions (timers, global keys) as a `subscriptions :: model -> Array
+(Subscription message)` field on `Program`, with a scenario verb to deliver
+one, once an example needs them.

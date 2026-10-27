@@ -57,6 +57,35 @@ update = case _ of
   GotPokemon result -> modify_ _ { pokemon = result }
 ```
 
+## Composition
+
+A child is a model, a message type, and an `update`. The parent keeps the
+child's model in a record field and runs the child there with `zoom`, naming
+the field with a type application and wrapping the child's messages:
+
+```purescript
+update = case _ of
+  GotCounter message -> do
+    out <- zoom @"counter" GotCounter (Counter.update message)
+    for_ out \ReachedTen -> modify_ _ { reachedTen = true }
+
+view model = map GotCounter (Counter.view model.counter)
+```
+
+A child reports to its parent through `update`'s return value, here
+`Update Counter.Model Counter.Message (Maybe OutMessage)`. There is no
+configuration record and no out-message field.
+
+The library's two stateful children work the same way. `Foldkit.Query` is a
+keyed cache of `AsyncData` and `Foldkit.Pagination` is a cursor-paged list:
+
+```purescript
+SelectedPokemon name -> zoom @"details" GotDetail (Query.ensure fetchPokemonDetail name)
+GotDetail message -> zoom @"details" GotDetail (Query.update message)
+ReachedListEnd -> zoom @"list" GotPage (Pagination.loadMore fetchPokemonPage)
+GotPage message -> zoom @"list" GotPage (Pagination.update message)
+```
+
 ## Testing
 
 A scenario starts where the program starts and drives it the way a user would:
@@ -82,7 +111,7 @@ the test.
 foldkit/     the library package (src/Foldkit*, test/ with its own specs)
 examples/    Counter, Parent, and the Pokédex, with their specs
 web/         Vite entry and styles for the Pokédex
-design/      the design rationale
+docs/        design rationale, style standard, Iris setup
 ```
 
 ## Scripts
@@ -94,3 +123,9 @@ npm run smoke           # Playwright against the live Pokédex
 ```
 
 Requirements: Iris 0.1.13 and Node 22 or newer.
+
+## Documents
+
+- [Design rationale](docs/design.md)
+- [Idiomatic PureScript standard](docs/idiomatic-purescript.md)
+- [Iris setup and workflow](docs/iris-setup.md)

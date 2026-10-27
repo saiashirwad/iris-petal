@@ -92,8 +92,8 @@ needs `Eq` and `Show`.
   (generations, cursors) is captured by command instances and never reaches a
   test.
 - FFI is a thin edge: DOM operations in `Foldkit.Browser.js`.
-- `unsafeCoerce` appears only in `Foldkit.Command`, behind a reference
-  identity check.
+- `unsafeCoerce` appears only in `Foldkit.Command.Internal`, behind a
+  reference identity check.
 
 No hidden mutation, no module-global dispatch stack, no `unsafePerformEffect`.
 
