@@ -207,13 +207,16 @@ matchesDisplayValue target element =
   element.tag `elem` [ "input", "textarea", "select" ] && attribute "value" element == Just target
 
 matchesLabel :: forall message. String -> Html message -> Element message -> Boolean
-matchesLabel target root element = (isLabelable element || isJust (attribute "aria-label" element))
-  && accessibleName root element
-  == normalize target
+matchesLabel target root element =
+  (isLabelable element || hasAriaLabel element) && accessibleName root element == normalize target
 
 isLabelable :: forall message. Element message -> Boolean
 isLabelable element =
   element.tag `elem` [ "button", "input", "meter", "output", "progress", "select", "textarea" ]
+
+hasAriaLabel :: forall message. Element message -> Boolean
+hasAriaLabel element =
+  isJust (attribute "aria-label" element) || isJust (attribute "aria-labelledby" element)
 
 matchesRole :: forall message. Role -> Maybe String -> Html message -> Element message -> Boolean
 matchesRole target name root element = roleOf element
@@ -270,7 +273,7 @@ implicitRole element = case element.tag of
   "option" -> Just Option
   "p" -> Just Paragraph
   "progress" -> Just ProgressBar
-  "section" -> if isJust (attribute "aria-label" element) then Just Region else Nothing
+  "section" -> if hasAriaLabel element then Just Region else Nothing
   "select" -> if isJust (attribute "multiple" element) then Just ListBox else Just Combobox
   "summary" -> Just Button
   "table" -> Just Table

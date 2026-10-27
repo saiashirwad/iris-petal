@@ -5,6 +5,7 @@ import Prelude
 import Effect (Effect)
 import Test.Foldkit.Cache as Cache
 import Test.Foldkit.Http as Http
+import Test.Foldkit.Locator as Locator
 import Test.Foldkit.Scenario as Scenario
 import Test.Foldkit.View as View
 import Test.Spec.Reporter (consoleReporter)
@@ -16,3 +17,4 @@ main = runSpecAndExitProcess [ consoleReporter ] do
   Cache.spec
   View.spec
   Http.spec
+  Locator.spec
