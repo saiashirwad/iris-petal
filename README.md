@@ -93,7 +93,45 @@ Test.run Counter.program do
   expect (role Paragraph) (HasText "2")
 ```
 
-Commands are not executed in a scenario. Instead, supply their results with `resolve definition result`, or `resolveFor definition args result` when the same definition has multiple pending commands. Scenarios start after `init`, must resolve pending commands before sending another message or interaction, and fail if commands remain unresolved at the end. See the [Pokédex scenarios](examples/test/Test/Pokedex.purs) for loading, errors, and retries.
+### A story with a request
+
+The Pokédex starts by requesting a page. This story supplies that page, searches the visible list, opens a result, and supplies its details:
+
+```purescript
+it "filters the grid and shows the selected detail" do
+  Test.run program do
+    resolve fetchPokemonPage (Right { items: [ bulbasaur, charmanderSummary ], next: Nothing })
+    fill (label "Search Pokémon") "char"
+    expectAbsent (named Button "Bulbasaur")
+    click (named Button "Charmander")
+    expectPresent (named Status "Loading Charmander")
+    resolve fetchPokemonDetail (Right charmander)
+    expectPresent (named Heading "Charmander")
+    expect (role Article) (ContainsText "Fire")
+```
+
+The first `resolve` answers the command issued by `init`. Clicking Charmander issues another command; the test can inspect the loading view before answering it. The named Pokémon values are fixtures defined in the [complete test](examples/test/Test/Pokedex.purs), along with the imports.
+
+### A story about failure and retry
+
+The same scenario API can send messages directly and inspect model state when that makes a behavior easier to express:
+
+```purescript
+it "caches a detail and retries a failure" do
+  Test.run program do
+    resolve fetchPokemonPage (Right { items: [ charmanderSummary ], next: Nothing })
+    send (SelectedPokemon "charmander")
+    resolve fetchPokemonDetail (Left (BadStatus 500 ""))
+    expect (role Alert) (ContainsText "HTTP 500")
+    send (SelectedPokemon "charmander")
+    resolve fetchPokemonDetail (Right charmander)
+    expectModel (Query.lookup "charmander" <<< _.details) (Success charmander)
+    send (SelectedPokemon "charmander")
+```
+
+The last selection uses the cached result. If it issued another command, the scenario would fail because that command was left unresolved.
+
+Commands are not executed in a scenario. Instead, supply their results with `resolve definition result`, or `resolveFor definition args result` when the same definition has multiple pending commands. Scenarios start after `init`, must resolve pending commands before sending another message or interaction, and fail if commands remain unresolved at the end. The [Pokédex tests](examples/test/Test/Pokedex.purs) also show pagination and model assertions; the [parent test](examples/test/Test/Parent.purs) exercises a composed component.
 
 The test runner interprets Petal's HTML and event handlers in memory. It is useful for testing application behavior, but it does not run a browser or replace browser tests for DOM, layout, or integration behavior.
 
